@@ -338,7 +338,8 @@
         <ul>
           <li><span class="kbadge deny">PreToolUse</span> 攔在 <code>Edit｜Write｜Bash</code> 前 → <strong>DENY</strong> 改到凍結的 acceptance、危險命令(<code>rm -rf</code>、<code>git push --force</code>、<code>--no-verify</code>);<strong>RECORD</strong> repo 外寫入、status 改 passing → <code>.harness/trace.jsonl</code></li>
           <li><span class="kbadge record">PostToolUse</span> 每個工具後 → 以每帳號用量為事實來源,額度逼近上限且在開發流程中時,指示寫交接、收工</li>
-          <li><strong>這是「凍結 acceptance」從口號變成真牆的地方</strong> —— hook 在執行前 DENY,AI 繞不過去</li>
+          <li><span class="kbadge record">schema-drift</span> 機制自檢 —— hook 是 fail-open 的:上游改了 payload 契約就會無聲關閉,而 trace 照記 <code>ok</code>。缺必要欄位時改記 <code>schema-drift</code> 並示警</li>
+          <li><strong>這是「凍結 acceptance」從口號變成真牆的地方</strong> —— hook 在執行前 DENY,AI 繞不過去;而一道會無聲倒塌的牆比沒有牆更危險,所以牆本身也要體檢</li>
         </ul>
       </div>
 
@@ -365,9 +366,10 @@
         <div class="card-top"><span class="cnum">L4</span><h3>Agent 角色</h3><span class="chip part">檢查</span></div>
         <p class="loc">~/.claude/agents/ + 內建</p>
         <ul>
-          <li><strong>acceptance-verifier</strong> —— 唯一的自訂 agent,獨立驗收者(codex-verify 的 fallback)</li>
-          <li>內建 <strong>Explore</strong>(大範圍探索)、<strong>Plan</strong>(架構設計)</li>
-          <li>原則:<strong>生成者 ≠ 驗收者</strong> —— 同脈絡的模型無法誠實評自己的產物</li>
+          <li><strong>acceptance-verifier</strong> —— 獨立驗收者(codex-verify 的 fallback),工具收斂成白名單並停用委派</li>
+          <li><strong>Explore</strong> —— 覆寫內建版,釘在 haiku + 低 effort:內建版會繼承主 session 模型,等於用最貴的配置做最不需要判斷的全庫搜尋</li>
+          <li>另用內建 <strong>Plan</strong>(架構設計)</li>
+          <li>原則:<strong>生成者 ≠ 驗收者</strong> —— 同脈絡的模型無法誠實評自己的產物;角色邊界靠 frontmatter 釘死,不靠規則叮嚀</li>
         </ul>
       </div>
 

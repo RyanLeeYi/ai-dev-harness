@@ -109,10 +109,13 @@
 - **PreToolUse**(攔在 `Edit｜Write｜Bash` 前)→ `harness-trace.sh`
   - **DENY(直接擋)**:改到已凍結的 `acceptance`、危險命令(`rm -rf`、`git push --force`、`--no-verify`、`git reset --hard`…)
   - **RECORD(只記不擋)**:repo 外寫入、feature status 改 `passing` → 寫進 `.harness/trace.jsonl`
+  - **schema-drift(機制自檢)**:hook 是 fail-open 的 —— payload 欄位讀不到就靜默放行。若上游改了契約,防線會**無聲關閉**,而 trace 照記 `verdict: ok`,看起來一切健康。缺必要欄位時改記 `schema-drift` 並示警
 - **PostToolUse**(每個工具後)→ `usage-guard.sh`
   - 以**每帳號用量為事實來源**,額度逼近上限且在開發流程中時,指示寫好交接、收工 —— 避免在額度見底時硬做爛決定
 
 > **這一層是「凍結 acceptance」從口號變成一道真牆的地方。** hook 在執行前就 DENY,AI 繞不過去。
+>
+> **而 schema-drift 是那道牆的體檢。** 一道會無聲倒塌的牆比沒有牆更危險 —— 因為你以為它還在。實測過最壞的形狀:payload 少一個欄位時,一句含 `rm -rf /` 的命令被記成 `verdict: ok`。防線失效本身,也必須是看得見的事件。
 
 #### L2 Meta Loop — 自我改進 · `harness-retro.py` + `/harness-retro`
 
@@ -130,7 +133,11 @@
 
 #### L4 Agent 角色 · `~/.claude/agents/` + 內建
 
-`acceptance-verifier` —— 唯一的自訂 agent,獨立驗收者(codex-verify 的 fallback)。內建 `Explore`(探索)、`Plan`(架構)。
+- `acceptance-verifier` —— 獨立驗收者(codex-verify 的 fallback)。工具收斂成白名單(讀取 + 跑測試取證據),並停用委派:驗收者不該再外包出去
+- `Explore` —— **覆寫內建版**,釘在 haiku + 低 effort。Claude Code v2.1.198 起內建 Explore 會**繼承主 session 模型**,等於用最貴的配置做最不需要判斷的全庫搜尋
+- 另用內建 `Plan`(架構)
+
+> 模型分層與角色邊界不靠規則叮嚀,靠 frontmatter 釘死 —— 與 L1 同一個思路:**能寫進 capability 的,就不要只寫進文件。**
 
 #### L5 跨模型檢查者 · Codex CLI
 
@@ -188,6 +195,8 @@
 - **獨立性會被基礎設施悄悄破壞** —— 代理接管模式開啟時,以為在跑 Codex,實際跑的是同源模型,review 失去獨立性。跨模型檢查前要先確認路由。
 - **消融檢討防 cargo-cult** —— 每個組件都有維護成本。收官時用 trace 數據問「這層真的擋住問題了嗎」,沒發揮作用的下個專案不照抄。小專案停在 L1 是正確的,不是偷懶。
 - **檔案瘦身 = context 預算** —— 分「每 session 都讀的操作檔(保持精瘦)」vs「收官才讀的檔案庫(不縮)」,避免歷史雜訊塞爆 context。
+- **防線會無聲失效,所以防線本身要被監測** —— hook 是 fail-open 設計:欄位讀不到就靜默放行。上游改一次 payload 契約,整道防線關閉而 trace 照記 `ok`,看起來比平常還健康。回歸測試只在「我改動它」時跑,擋不住「它自己壞掉」。現在 retro 開場無條件先驗機制活著,再談資料判讀 —— 機制失效期間的 trace 本來就不可信。
+- **規則寫在文件是宣示,寫在 capability 才是機制** —— 曾用 rules 的一段文字勸模型少開 subagent,而同一套 harness 的核心主張正是「可靠性來自結構化產物,不是更長的 prompt」。檢查自己的規範時要問「這條靠什麼執行」;答案若是「靠模型記得」,那就等於沒有。
 
 ---
 
