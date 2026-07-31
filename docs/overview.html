@@ -257,6 +257,7 @@
       <div class="frow"><div class="fk">假完成</div><div class="fv">宣稱「做完了」但根本沒跑過驗證</div></div>
       <div class="frow"><div class="fk">範圍蔓延</div><div class="fv">擅自做清單外的事、改到不該碰的檔案</div></div>
       <div class="frow"><div class="fk">目標軟化</div><div class="fv">為了讓測試過,偷偷放寬驗收標準</div></div>
+      <div class="frow"><div class="fk">走錯流程</div><div class="fv">套用另一套方法論,產物落到別的地方、繞過簽核關卡</div></div>
       <div class="frow"><div class="fk">Context 燒光</div><div class="fv">歷史雜訊塞爆脈絡,每次開場都變慢</div></div>
     </div>
   </div>
@@ -303,7 +304,7 @@
         <div class="rail"><span class="cl-letter">B</span><span class="cl-name">強制</span><span class="cl-note">系統核心</span></div>
         <div class="bands">
           <button class="band" data-layer="2"><span class="code">L2</span><span class="bwrap"><span class="bname">Meta Loop — 自我改進</span><span class="bone">trace + failures → eval → 改進提案(經簽核)</span></span><span class="chip part">SHARED — 概念</span></button>
-          <button class="band" data-layer="1"><span class="code">L1</span><span class="bwrap"><span class="bname">強制機制 Hooks</span><span class="bone">PreToolUse 攔越權 · PostToolUse 用量收工</span></span><span class="chip deny">SHARED — 無 · 核心</span></button>
+          <button class="band" data-layer="1"><span class="code">L1</span><span class="bwrap"><span class="bname">強制機制 Hooks</span><span class="bone">PreToolUse 攔越權 + 攔流程 · PostToolUse 用量收工</span></span><span class="chip deny">SHARED — 無 · 核心</span></button>
         </div>
       </div>
       <!-- A -->
@@ -336,7 +337,9 @@
         <div class="card-top"><span class="cnum">L1</span><h3>強制機制 Hooks</h3><span class="chip deny">強制 · 系統核心</span></div>
         <p class="loc">~/.claude/scripts/ + settings.json</p>
         <ul>
-          <li><span class="kbadge deny">PreToolUse</span> 攔在 <code>Edit｜Write｜Bash</code> 前 → <strong>DENY</strong> 改到凍結的 acceptance、危險命令(<code>rm -rf</code>、<code>git push --force</code>、<code>--no-verify</code>);<strong>RECORD</strong> repo 外寫入、status 改 passing → <code>.harness/trace.jsonl</code></li>
+          <li>兩支 PreToolUse hook 分工:一支管<strong>做了什麼</strong>(越權),一支管<strong>有沒有照流程走</strong></li>
+          <li><span class="kbadge deny">PreToolUse ①</span> 越權 —— 攔在 <code>Edit｜Write｜Bash</code> 前 → <strong>DENY</strong> 改到凍結的 acceptance、危險命令(<code>rm -rf</code>、<code>git push --force</code>、<code>--no-verify</code>);<strong>RECORD</strong> repo 外寫入、status 改 passing、用 Bash 改 <code>feature_list.json</code> → <code>.harness/trace.jsonl</code>。保護<strong>不綁工具型別</strong>:原本只認 <code>Edit</code>,改用 <code>Write</code> 或 Bash 寫同一個檔就整組失效</li>
+          <li><span class="kbadge deny">PreToolUse ②</span> 流程 —— 攔在 <code>Skill｜Read｜Edit｜Write｜Bash</code> 前 → <strong>DENY</strong> 在 harness 專案裡呼叫另一套方法論的規劃 skill(它們的終點是計畫文件,而這裡的終點是經簽核、凍結進 <code>feature_list.json</code> 的驗收清單);<strong>RECORD</strong> 操作某專案的檔案卻不在該專案目錄內 —— 開場第 0 步沒做的訊號</li>
           <li><span class="kbadge record">PostToolUse</span> 每個工具後 → 以每帳號用量為事實來源,額度逼近上限且在開發流程中時,指示寫交接、收工</li>
           <li><span class="kbadge record">schema-drift</span> 機制自檢 —— hook 是 fail-open 的:上游改了 payload 契約就會無聲關閉,而 trace 照記 <code>ok</code>。缺必要欄位時改記 <code>schema-drift</code> 並示警</li>
           <li><strong>這是「凍結 acceptance」從口號變成真牆的地方</strong> —— hook 在執行前 DENY,AI 繞不過去;而一道會無聲倒塌的牆比沒有牆更危險,所以牆本身也要體檢</li>
@@ -449,6 +452,11 @@
       <div class="lesson"><span class="lt">獨立性會被基礎設施悄悄破壞</span><div><div class="ld">代理接管模式開啟時,以為在跑 Codex,實際跑的是同源模型,review 失去獨立性。跨模型檢查前要先確認路由。</div></div></div>
       <div class="lesson"><span class="lt">消融檢討防 cargo-cult</span><div><div class="ld">每個組件都有維護成本。收官時用 trace 數據問「這層真的擋住問題了嗎」,沒發揮作用的下個專案不照抄。小專案停在 L1 是正確的。</div></div></div>
       <div class="lesson"><span class="lt">檔案瘦身 = context 預算</span><div><div class="ld">分「每 session 都讀的操作檔(保持精瘦)」vs「收官才讀的檔案庫(不縮)」,避免歷史雜訊塞爆 context。</div></div></div>
+      <div class="lesson"><span class="lt">防線會無聲失效,所以防線本身要被監測</span><div><div class="ld">hook 是 fail-open 設計:欄位讀不到就靜默放行。上游改一次 payload 契約,整道防線關閉而 trace 照記 <code>ok</code>,看起來比平常還健康。回歸測試只在「我改動它」時跑,擋不住「它自己壞掉」。</div></div></div>
+      <div class="lesson"><span class="lt">規則寫在文件是宣示,寫在 capability 才是機制</span><div><div class="ld">檢查自己的規範時要問「這條靠什麼執行」;答案若是「靠模型記得」,那就等於沒有。能釘進 frontmatter、白名單、hook 的,就不要只寫進文件。</div></div></div>
+      <div class="lesson"><span class="lt">保護綁工具型別 = 換個工具就繞過</span><div><div class="ld">凍結 acceptance 的 DENY 原本判斷「這是不是 <code>Edit</code> 操作」,結果用 <code>Write</code> 整檔覆寫或用 Bash 改同一份 JSON,兩條保護都靜默失效。保護要綁在<strong>被保護的對象</strong>上,不是綁在到達它的路徑上。反面同樣真:過嚴的 DENY 會把人逼去用沒有保護的繞道。</div></div></div>
+      <div class="lesson"><span class="lt">兩套方法論的岔路</span><div><div class="ld">通用 agent 方法論與自己的 harness 前半段高度重疊(都從釐清需求開始),尾巴卻不同:一個終點是計畫文件,一個是經簽核凍結的驗收清單。重疊讓人以為可以互換,於是簽核關卡被整段跳過。而注入式的流程提示位階高過自己的設定檔 —— 光在規則裡多寫一段會被蓋過去,得靠 hook 才擋得住。</div></div></div>
+      <div class="lesson"><span class="lt">測資自己捏 = 測試全綠但真實輸入全掛</span><div><div class="ld">新 hook 通過 15 個自製情境,換成真實格式的輸入卻全部靜默失效;真因是自製測資本身寫錯(路徑跳脫),而 fail-open 讓它看起來「什麼事都沒發生」。合成測資只驗得到自己想像中的形狀。</div></div></div>
     </div>
   </div>
 </section>

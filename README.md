@@ -57,6 +57,7 @@
 | 假完成 | 宣稱「做完了」但沒跑過驗證 | evidence 閘門(L6)+ 獨立驗收(L4/L5) |
 | 範圍蔓延 | 擅自做清單外的事、改到不該碰的檔案 | 邊界規則 + hook DENY(L1) |
 | 目標軟化 | 為了讓測試過,偷偷放寬驗收標準 | 凍結 acceptance + hook DENY(L1) |
+| 走錯流程 | 套用另一套方法論,產物落到別的地方、繞過簽核關卡 | 流程 hook DENY(L1) |
 | Context 燒光 | 歷史雜訊塞爆脈絡,開場愈來愈慢 | 檔案瘦身(L6/L8) |
 
 > **這不是紙上談兵。** L1 的 hook 每天在真的觸發 —— trace 目錄裡累積著實際攔下的越權與記錄。整套系統就是針對上面五點,一層一層把防線建起來。
@@ -106,10 +107,17 @@
 
 #### L1 強制機制 Hooks · `~/.claude/scripts/` + `settings.json`
 
-- **PreToolUse**(攔在 `Edit｜Write｜Bash` 前)→ `harness-trace.sh`
+兩支 PreToolUse hook 分工:一支管**做了什麼**(越權),一支管**有沒有照流程走**。
+
+- **PreToolUse ①「越權」**(攔在 `Edit｜Write｜Bash` 前)→ `harness-trace.sh`
   - **DENY(直接擋)**:改到已凍結的 `acceptance`、危險命令(`rm -rf`、`git push --force`、`--no-verify`、`git reset --hard`…)
-  - **RECORD(只記不擋)**:repo 外寫入、feature status 改 `passing` → 寫進 `.harness/trace.jsonl`
+  - **RECORD(只記不擋)**:repo 外寫入、feature status 改 `passing`、用 Bash 改 `feature_list.json` → 寫進 `.harness/trace.jsonl`
+  - **不綁工具型別**:凍結保護原本只認 `Edit`,於是改用 `Write` 或 Bash 腳本重寫同一個檔就整組失效(見教訓)。現在三種寫入路徑都在涵蓋範圍,且 `acceptance` 改判「值有沒有被動」而非「有沒有提到這個字」,在檔尾追加新 feature 不再被誤擋
   - **schema-drift(機制自檢)**:hook 是 fail-open 的 —— payload 欄位讀不到就靜默放行。若上游改了契約,防線會**無聲關閉**,而 trace 照記 `verdict: ok`,看起來一切健康。缺必要欄位時改記 `schema-drift` 並示警
+- **PreToolUse ②「流程」**(攔在 `Skill｜Read｜Edit｜Write｜Bash` 前)→ `harness-gate.sh`
+  - **DENY**:在 harness 專案裡呼叫另一套方法論的規劃 skill —— 它們的終點是計畫文件,而 harness 專案的終點是**經簽核、凍結進 `feature_list.json` 的驗收清單**。兩套流程前半段重疊、尾巴不同,接錯就繞過了簽核關卡
+  - **RECORD(只提醒)**:操作某個 harness 專案的檔案、但工作目錄不在該專案內 —— 這是「開場第 0 步沒做」的訊號,代表 repo 自己的設定與規則都沒生效
+  - 刻意與 ① 分開:①的生效條件是「cwd 在 harness 專案內」,而②要抓的正是 cwd **不在**的情形
 - **PostToolUse**(每個工具後)→ `usage-guard.sh`
   - 以**每帳號用量為事實來源**,額度逼近上限且在開發流程中時,指示寫好交接、收工 —— 避免在額度見底時硬做爛決定
 
@@ -197,6 +205,9 @@
 - **檔案瘦身 = context 預算** —— 分「每 session 都讀的操作檔(保持精瘦)」vs「收官才讀的檔案庫(不縮)」,避免歷史雜訊塞爆 context。
 - **防線會無聲失效,所以防線本身要被監測** —— hook 是 fail-open 設計:欄位讀不到就靜默放行。上游改一次 payload 契約,整道防線關閉而 trace 照記 `ok`,看起來比平常還健康。回歸測試只在「我改動它」時跑,擋不住「它自己壞掉」。現在 retro 開場無條件先驗機制活著,再談資料判讀 —— 機制失效期間的 trace 本來就不可信。
 - **規則寫在文件是宣示,寫在 capability 才是機制** —— 曾用 rules 的一段文字勸模型少開 subagent,而同一套 harness 的核心主張正是「可靠性來自結構化產物,不是更長的 prompt」。檢查自己的規範時要問「這條靠什麼執行」;答案若是「靠模型記得」,那就等於沒有。
+- **保護綁在工具型別上,等於換個工具就繞過** —— 凍結 acceptance 的 DENY 原本判斷「這是不是 `Edit` 操作」,結果用 `Write` 整檔覆寫、或用 Bash 腳本改同一份 JSON,兩條保護都靜默失效(實際發生:四次 failing→passing 全被記成 `ok`)。保護要綁在**被保護的對象**上,不是綁在到達它的路徑上。同時學到反面:過嚴的 DENY 會把人逼去用沒有保護的繞道 —— 當時「在檔尾追加新 feature」被誤擋,而繞道正是 Bash。
+- **兩套方法論的岔路** —— 通用的 agent 方法論與自己的 harness 前半段高度重疊(都從釐清需求開始),尾巴卻完全不同:一個終點是計畫文件,一個終點是經簽核凍結的驗收清單。重疊讓人以為可以互換,於是產物落到別的目錄、簽核關卡被整段跳過。而**注入式的流程提示位階高過自己的設定檔** —— 光在全域規則裡多寫一段「請走這條」,會被更強勢的提示蓋過去,得靠 hook 才擋得住。
+- **測資自己捏 = 測試全綠但真實輸入全掛** —— 剛寫完的 hook 通過 15 個自製情境,換成真實格式的輸入卻全部靜默失效;真因是自製的測資本身是壞的(路徑跳脫寫錯),而 fail-open 設計讓它看起來「什麼事都沒發生」。合成測資只驗得到自己想像中的形狀。
 
 ---
 
