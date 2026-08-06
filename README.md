@@ -76,7 +76,7 @@
    D 產物 │  6  每個 repo 的 L1/L2/L3 漸進 harness  ← 可轉移的那層     │
         ├──────────────────────────────────────────────────────────┤
    C 檢查 │  5  跨模型檢查者(Codex 獨立驗收 / 第二意見 / 額度 fallback)│
-        │  4  Agent 角色(acceptance-verifier · Explore · Plan)      │
+        │  4  Agent 角色:檢查者 · 執行者 · 探索者(依用途分層)       │
         │  3  技能庫(prd · review · verify · retro · superpowers)   │
         ├──────────────────────────────────────────────────────────┤
    B 強制 │  2  Meta Loop:trace + failures → eval → 改進(自我改進)   │
@@ -110,7 +110,7 @@
 兩支 PreToolUse hook 分工:一支管**做了什麼**(越權),一支管**有沒有照流程走**。
 
 - **PreToolUse ①「越權」**(攔在 `Edit｜Write｜Bash` 前)→ `harness-trace.sh`
-  - **DENY(直接擋)**:改到已凍結的 `acceptance`、危險命令(`rm -rf`、`git push --force`、`--no-verify`、`git reset --hard`…)
+  - **DENY(直接擋)**:改到已凍結的 `acceptance`、改到已簽核 envelope 的 `constraints` 與 `non_goals`(比對陣列元素,所以追加放行、改寫或刪除擋下)、危險命令(`rm -rf`、`git push --force`、`--no-verify`、`git reset --hard`…)
   - **RECORD(只記不擋)**:repo 外寫入、feature status 改 `passing`、用 Bash 改 `feature_list.json` → 寫進 `.harness/trace.jsonl`
   - **不綁工具型別**:凍結保護原本只認 `Edit`,於是改用 `Write` 或 Bash 腳本重寫同一個檔就整組失效(見教訓)。現在三種寫入路徑都在涵蓋範圍,且 `acceptance` 改判「值有沒有被動」而非「有沒有提到這個字」,在檔尾追加新 feature 不再被誤擋
   - **schema-drift(機制自檢)**:hook 是 fail-open 的 —— payload 欄位讀不到就靜默放行。若上游改了契約,防線會**無聲關閉**,而 trace 照記 `verdict: ok`,看起來一切健康。缺必要欄位時改記 `schema-drift` 並示警
@@ -137,15 +137,20 @@
 
 #### L3 技能庫 · `~/.claude/skills/`
 
-`prd`(需求→可驗證規格)· `codex-review`(寫得好不好)· `codex-verify`(做對了沒)· `harness-retro`(Meta Loop)· `project-memory`(寫記憶)。外掛 `superpowers`:brainstorming、TDD、systematic-debugging、writing-plans。
+`prd`(需求→可驗證規格)· `codex-review`(寫得好不好)· `codex-verify`(做對了沒)· `harness-retro`(Meta Loop)· `harness-plan`(範圍怎麼切、什麼順序、哪兩條可以平行)· `project-memory`(寫記憶)。外掛 `superpowers`:brainstorming、TDD、systematic-debugging、writing-plans。
 
 #### L4 Agent 角色 · `~/.claude/agents/` + 內建
 
-- `acceptance-verifier` —— 獨立驗收者(codex-verify 的 fallback)。工具收斂成白名單(讀取 + 跑測試取證據),並停用委派:驗收者不該再外包出去
-- `Explore` —— **覆寫內建版**,釘在 haiku + 低 effort。Claude Code v2.1.198 起內建 Explore 會**繼承主 session 模型**,等於用最貴的配置做最不需要判斷的全庫搜尋
+角色**依用途分層**,而不是一條「少開 subagent」的通則。分錯層的代價方向相反:檢查者多開一個是假的獨立性,執行者少開一個是白燒主 session 的 context。
+
+- **檢查者**(review / 驗收)—— 不開同模型分身。同一顆模型的分身共享同一套誤讀,獨立性是假的;要獨立就跨模型走 L5。`acceptance-verifier`(做對了沒)與 `plan-verifier`(動工前只讀規格的冷讀)都只當 Codex 不可用時的退路。工具收斂成白名單,並停用委派:檢查者不該再外包出去
+- **執行者**(範圍已定的實作)—— `mech-executor`(已完全指定的機械改動)與 `executor`(範圍內容許技術判斷),frontmatter 釘 sonnet。目的不是獨立性,是**省額度**:工作跑在獨立 context,主 session 只收最後一則訊息。兩者都停用委派、都不收安全敏感工作 —— 它們的契約是「照規格做完、不多想」,而安全最需要的正是「規格本身有沒有漏洞」那個判斷
+- **探索者**(唯讀搜尋)—— `Explore` **覆寫內建版**,釘死 haiku。Claude Code v2.1.198 起內建 Explore 會**繼承主 session 模型**,等於用最貴的配置做最不需要判斷的全庫搜尋
 - 另用內建 `Plan`(架構)
 
-> 模型分層與角色邊界不靠規則叮嚀,靠 frontmatter 釘死 —— 與 L1 同一個思路:**能寫進 capability 的,就不要只寫進文件。**
+> **省的是模型階層與 context 隔離,不是 effort。** 實測成本 97% 來自長 session 重送 context、reasoning 只占 0.1%;壓低 effort 幾乎省不到錢,卻直接換走品質,所以便宜模型的 worker 一律跑在最高 effort。
+>
+> 模型分層與角色邊界不靠規則叮嚀,靠 frontmatter 釘死 —— 與 L1 同一個思路:**能寫進 capability 的,就不要只寫進文件。** 代價是自訂角色會載入全域記憶(內建的會跳過),每個角色都在付這筆 context 稅,所以角色數量壓到最低。
 
 #### L5 跨模型檢查者 · Codex CLI
 
@@ -159,9 +164,13 @@
 
 三級漸進,按痛點出現才升級(不 cargo-cult):
 
-- **L1**(動工日):`CLAUDE.md` + `init.sh` + `feature_list.json` —— 範圍與驗收的狀態機,acceptance 凍結、evidence 閘門
+- **L1**(動工日):`CLAUDE.md` + `init.sh` + `feature_list.json` —— 範圍與驗收的狀態機,acceptance 凍結、evidence 閘門、feature 之間的 `prerequisites` 明確申報
 - **L2**(第一次沒做完就收工):`session-handoff.md` + `docs/ARCHITECTURE.md`
 - **L3**(難查的 bug 或功能 &gt; 5):結構化日誌 + 邊界 guard 腳本 + 驗收角色分離
+
+> **相依關係要申報,不申報就當「未申報」而不是「沒有」。** 沒有 `prerequisites`,「下一條做哪個」只能從 id 大小猜,而 id 順序不等於相依順序;「這兩條能不能平行」則要三個條件同時成立 —— 不互為前置、動到的檔案無交集、依賴的資源無交集。
+>
+> 跨 3 條以上 feature 的大工作,在規劃期就用 **envelope** 圈住共用約束與 non_goals 並簽核凍結,切出來的 slice 就是 feature、不另立第二套 ID。等 acceptance 都凍結了才發現要拆,只剩取代流程可走,那很貴。
 
 ### E · 記憶 & 編排 — repo 之外的東西
 
@@ -207,6 +216,7 @@
 - **規則寫在文件是宣示,寫在 capability 才是機制** —— 曾用 rules 的一段文字勸模型少開 subagent,而同一套 harness 的核心主張正是「可靠性來自結構化產物,不是更長的 prompt」。檢查自己的規範時要問「這條靠什麼執行」;答案若是「靠模型記得」,那就等於沒有。
 - **保護綁在工具型別上,等於換個工具就繞過** —— 凍結 acceptance 的 DENY 原本判斷「這是不是 `Edit` 操作」,結果用 `Write` 整檔覆寫、或用 Bash 腳本改同一份 JSON,兩條保護都靜默失效(實際發生:四次 failing→passing 全被記成 `ok`)。保護要綁在**被保護的對象**上,不是綁在到達它的路徑上。同時學到反面:過嚴的 DENY 會把人逼去用沒有保護的繞道 —— 當時「在檔尾追加新 feature」被誤擋,而繞道正是 Bash。
 - **兩套方法論的岔路** —— 通用的 agent 方法論與自己的 harness 前半段高度重疊(都從釐清需求開始),尾巴卻完全不同:一個終點是計畫文件,一個終點是經簽核凍結的驗收清單。重疊讓人以為可以互換,於是產物落到別的目錄、簽核關卡被整段跳過。而**注入式的流程提示位階高過自己的設定檔** —— 光在全域規則裡多寫一段「請走這條」,會被更強勢的提示蓋過去,得靠 hook 才擋得住。
+- **一條規則的效力範圍,只到它的論證涵蓋得到的地方** —— 「不新增自訂 agent」原本的理由是「同模型分身共享同一套誤讀」。那句話只對**檢查者**成立,卻被整段套到執行者與探索者身上,於是最不需要判斷的全庫搜尋一直跑在最貴的模型上。同一段時間還有另一半的誤判:憑感覺以為「壓低 effort 就會省」,實測歸因後才發現 97% 的成本是長 session 重送 context、reasoning 只占 0.1% —— 真正省的是模型階層與 context 隔離,壓 effort 只是拿品質換個心安。規則要跟著論證走,成本要跟著量測走。
 - **測資自己捏 = 測試全綠但真實輸入全掛** —— 剛寫完的 hook 通過 15 個自製情境,換成真實格式的輸入卻全部靜默失效;真因是自製的測資本身是壞的(路徑跳脫寫錯),而 fail-open 設計讓它看起來「什麼事都沒發生」。合成測資只驗得到自己想像中的形狀。
 
 ---
