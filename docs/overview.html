@@ -304,7 +304,7 @@
         <div class="rail"><span class="cl-letter">B</span><span class="cl-name">強制</span><span class="cl-note">系統核心</span></div>
         <div class="bands">
           <button class="band" data-layer="2"><span class="code">L2</span><span class="bwrap"><span class="bname">Meta Loop — 自我改進</span><span class="bone">trace + failures → eval → 改進提案(經簽核)</span></span><span class="chip part">SHARED — 概念</span></button>
-          <button class="band" data-layer="1"><span class="code">L1</span><span class="bwrap"><span class="bname">強制機制 Hooks</span><span class="bone">PreToolUse 攔越權 + 攔流程 · PostToolUse 用量收工</span></span><span class="chip deny">SHARED — 無 · 核心</span></button>
+          <button class="band" data-layer="1"><span class="code">L1</span><span class="bwrap"><span class="bname">強制機制 Hooks</span><span class="bone">SessionStart 常駐入口 · PreToolUse 攔越權 + 攔流程 · PostToolUse 用量收工</span></span><span class="chip deny">SHARED — 無 · 核心</span></button>
         </div>
       </div>
       <!-- A -->
@@ -337,8 +337,9 @@
         <div class="card-top"><span class="cnum">L1</span><h3>強制機制 Hooks</h3><span class="chip deny">強制 · 系統核心</span></div>
         <p class="loc">~/.claude/scripts/ + settings.json</p>
         <ul>
-          <li>兩支 PreToolUse hook 分工:一支管<strong>做了什麼</strong>(越權),一支管<strong>有沒有照流程走</strong></li>
-          <li><span class="kbadge deny">PreToolUse ①</span> 越權 —— 攔在 <code>Edit｜Write｜Bash</code> 前 → <strong>DENY</strong> 改到凍結的 acceptance、改到已簽核 envelope 的 constraints 與 non_goals(比對陣列元素,追加放行、改寫或刪除擋下)、危險命令(<code>rm -rf</code>、<code>git push --force</code>、<code>--no-verify</code>);<strong>RECORD</strong> repo 外寫入、status 改 passing、用 Bash 改 <code>feature_list.json</code> → <code>.harness/trace.jsonl</code>。保護<strong>不綁工具型別</strong>:原本只認 <code>Edit</code>,改用 <code>Write</code> 或 Bash 寫同一個檔就整組失效</li>
+          <li>三種 hook 事件各司其職:SessionStart 管<strong>每次都要在場的東西</strong>,兩支 PreToolUse 一支管<strong>做了什麼</strong>(越權)、一支管<strong>有沒有照流程走</strong>,PostToolUse 管<strong>還能不能繼續</strong></li>
+          <li><span class="kbadge record">SessionStart</span> 常駐入口 —— 把「按需知識庫」的入口注入每個 session。問題在於知識庫是<strong>權威</strong>(專案目標、過去決策、進行中的提醒都在那)但<strong>從不自動載入</strong>,而 <code>rules/common/</code> 每次都在,於是權威那份形同不存在。<strong>寫在 <code>CLAUDE.md</code> 的條件式指示打不過無條件常駐注入</strong>:同機器上 persona 類 plugin(SessionStart 注入、語氣是 ACTIVE EVERY RESPONSE)每次生效,而 <code>CLAUDE.md</code> 裡「任務涉及 X 就讀 Y」實測不觸發。三個坑:① <strong>判準要寫成看得到的觸發物</strong>,不是要判斷的類別(「使用者一講出專案名」可行,「任務涉及某專案的規劃」不可行);② <strong>讀到不等於用到</strong> —— 要補「讀完要做什麼」;③ <strong>深指標鏈跳一半會停</strong>,壓平成平行讀,短內容(如身份設定)直接內嵌進注入文字</li>
+          <li><span class="kbadge deny">PreToolUse ①</span> 越權 —— 攔在 <code>Edit｜Write｜Bash</code> 前 → <strong>DENY</strong> 改到凍結的 acceptance、改到已簽核 envelope 的 constraints 與 non_goals(比對陣列元素,追加放行、改寫或刪除擋下)、危險命令(<code>rm -rf</code>、<code>git push --force</code>、<code>--no-verify</code>);<strong>RECORD</strong> repo 外寫入、status 改 passing、用 Bash 改 <code>feature_list.json</code> → <code>.harness/trace.jsonl</code>。保護<strong>不綁工具型別</strong>:原本只認 <code>Edit</code>,改用 <code>Write</code> 或 Bash 寫同一個檔就整組失效。<strong>RECORD 的白名單</strong>:repo 外寫入有兩個例外不記 —— agent 自己的暫存命名空間,以及<strong>流程明文要求寫入的外部路徑</strong>(知識庫的專案資料夾:收工要在那裡留開發日誌與技術決策)。少了第二項會出事:規則叫 agent 寫、hook 記它越權,<strong>兩邊打架時帶警告的那邊贏</strong>,結果那個位置長期收不到紀錄,看起來像模型不聽話,其實是系統自相矛盾。白名單只開到該寫的那個子目錄,不擴大到整個外部空間</li>
           <li><span class="kbadge deny">PreToolUse ②</span> 流程 —— 攔在 <code>Skill｜Read｜Edit｜Write｜Bash</code> 前 → <strong>DENY</strong> 在 harness 專案裡呼叫另一套方法論的規劃 skill(它們的終點是計畫文件,而這裡的終點是經簽核、凍結進 <code>feature_list.json</code> 的驗收清單);<strong>RECORD</strong> 操作某專案的檔案卻不在該專案目錄內 —— 開場第 0 步沒做的訊號</li>
           <li><span class="kbadge record">PostToolUse</span> 每個工具後 → 以每帳號用量為事實來源,額度逼近上限且在開發流程中時,指示寫交接、收工</li>
           <li><span class="kbadge record">schema-drift</span> 機制自檢 —— hook 是 fail-open 的:上游改了 payload 契約就會無聲關閉,而 trace 照記 <code>ok</code>。缺必要欄位時改記 <code>schema-drift</code> 並示警</li>

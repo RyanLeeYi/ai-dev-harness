@@ -80,7 +80,8 @@
         │  3  技能庫(prd · review · verify · retro · superpowers)   │
         ├──────────────────────────────────────────────────────────┤
    B 強制 │  2  Meta Loop:trace + failures → eval → 改進(自我改進)   │
-        │  1  Hooks:PreToolUse 攔越權 · PostToolUse 用量收工         │
+        │  1  Hooks:SessionStart 注入常駐入口 · PreToolUse 攔越權    │
+        │            · PostToolUse 用量收工                          │
         ├──────────────────────────────────────────────────────────┤
    A 大腦 │  0  全域指令:CLAUDE.md + rules/common + 語言別規則         │
         └──────────────────────────────────────────────────────────┘
@@ -107,11 +108,20 @@
 
 #### L1 強制機制 Hooks · `~/.claude/scripts/` + `settings.json`
 
-兩支 PreToolUse hook 分工:一支管**做了什麼**(越權),一支管**有沒有照流程走**。
+三種 hook 事件各司其職:SessionStart 管**每次都要在場的東西**,兩支 PreToolUse 一支管**做了什麼**(越權)、一支管**有沒有照流程走**,PostToolUse 管**還能不能繼續**。
+
+- **SessionStart「常駐入口」**→ 把「按需知識庫」的入口注入每個 session
+  - 問題:知識庫是權威(專案的目標、過去的決策、進行中的提醒都在那),但它**從不自動載入**;而 `rules/common/` 每個 session 都在。結果是權威那份形同不存在 —— 規範單向漂進 `rules/`、收工不回寫、提到專案名直接跳進 repo
+  - **寫在 `CLAUDE.md` 的條件式指示打不過無條件常駐注入**。同一台機器上,persona 類 plugin(SessionStart 注入、語氣是「ACTIVE EVERY RESPONSE」)每次都生效,而 `CLAUDE.md` 裡一行「任務涉及 X 就去讀 Y」實測不會觸發。要每次生效,就得站上同一注入層
+  - 三個踩過的坑,都不是「模型不聽話」:
+    1. **判準要寫成看得到的觸發物,不是要判斷的類別**。「任務涉及某專案的規劃或收官」要模型先分類,失敗;改成「使用者一講出專案名稱」立刻通
+    2. **讀到不等於用到**。只寫「讀哪些檔案」,模型會把內容當背景資料;要補「讀完要做什麼」(例:相關的待辦提醒必須在第一則回應主動點出)
+    3. **深指標鏈跳一半會停**。「讀 A,照 A 的指示讀 B → C → D」不可靠,壓平成「平行讀這兩份」才穩。**要每次生效的短內容(例如身份設定)直接內嵌進注入文字,不要放在要另外讀的檔案裡**
 
 - **PreToolUse ①「越權」**(攔在 `Edit｜Write｜Bash` 前)→ `harness-trace.sh`
   - **DENY(直接擋)**:改到已凍結的 `acceptance`、改到已簽核 envelope 的 `constraints` 與 `non_goals`(比對陣列元素,所以追加放行、改寫或刪除擋下)、危險命令(`rm -rf`、`git push --force`、`--no-verify`、`git reset --hard`…)
   - **RECORD(只記不擋)**:repo 外寫入、feature status 改 `passing`、用 Bash 改 `feature_list.json` → 寫進 `.harness/trace.jsonl`
+  - **RECORD 的白名單**:repo 外寫入有兩個例外不記 —— agent 自己的暫存命名空間(scratchpad),以及**流程明文要求寫入的外部路徑**(這裡是知識庫的專案資料夾:收工要在那裡留開發日誌與技術決策)。少了第二項會出事:規則叫 agent 寫、hook 記它越權,**兩邊打架時帶警告的那邊贏**,結果是那個位置長期一筆紀錄都收不到,看起來像模型不聽話,其實是系統自相矛盾。白名單只開到「該寫的那個子目錄」,不擴大到整個外部空間
   - **不綁工具型別**:凍結保護原本只認 `Edit`,於是改用 `Write` 或 Bash 腳本重寫同一個檔就整組失效(見教訓)。現在三種寫入路徑都在涵蓋範圍,且 `acceptance` 改判「值有沒有被動」而非「有沒有提到這個字」,在檔尾追加新 feature 不再被誤擋
   - **schema-drift(機制自檢)**:hook 是 fail-open 的 —— payload 欄位讀不到就靜默放行。若上游改了契約,防線會**無聲關閉**,而 trace 照記 `verdict: ok`,看起來一切健康。缺必要欄位時改記 `schema-drift` 並示警
 - **PreToolUse ②「流程」**(攔在 `Skill｜Read｜Edit｜Write｜Bash` 前)→ `harness-gate.sh`
