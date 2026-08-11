@@ -371,7 +371,7 @@
         <p class="loc">~/.claude/agents/ + 內建</p>
         <ul>
           <li>角色<strong>依用途分層</strong>,不是一條「少開 subagent」的通則 —— 分錯層的代價方向相反:檢查者多開一個是假獨立性,執行者少開一個是白燒主 session 的 context</li>
-          <li><strong>檢查者</strong> —— <strong>acceptance-verifier</strong>(做對了沒)、<strong>plan-verifier</strong>(動工前只讀規格的冷讀),都只當 Codex 不可用時的退路。同模型分身共享同一套誤讀,要獨立就跨模型走 L5。工具收斂成白名單並停用委派</li>
+          <li><strong>檢查者</strong> —— <strong>acceptance-verifier</strong>(做對了沒)、<strong>plan-verifier</strong>(動工前只讀規格的冷讀),都只當 Codex 不可用時的退路,例外是需要真瀏覽器操作的 UI 驗收(本機環境快又穩,且 UI 行為幾乎沒有誤讀空間;回報須註明獨立性降級)。同模型分身共享同一套誤讀,要獨立就跨模型走 L5。工具收斂成白名單並停用委派</li>
           <li><strong>執行者</strong> —— 只有一支 <strong>executor</strong>(機械改動與有界技術判斷都歸它),釘 sonnet。目的不是獨立性是省額度:跑在獨立 context,主 session 只收最後一則訊息。不收安全敏感工作 —— 契約是「照規格做完」,而安全最需要的正是「規格本身有沒有漏洞」的判斷</li>
           <li><strong>direct-first</strong> —— 預設主 session 自己做。只有使用者明說要委派、兩條以上真正獨立可平行、或搜尋會吃掉大量 context 才派;實測完整編排的 token 與延遲大多落在主 session,不在便宜的 child</li>
           <li><strong>探索者</strong> —— <strong>Explore</strong> 覆寫內建版,釘死 haiku:內建版會繼承主 session 模型,等於用最貴的配置做最不需要判斷的全庫搜尋</li>
