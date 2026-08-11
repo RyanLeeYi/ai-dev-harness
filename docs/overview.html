@@ -372,7 +372,8 @@
         <ul>
           <li>角色<strong>依用途分層</strong>,不是一條「少開 subagent」的通則 —— 分錯層的代價方向相反:檢查者多開一個是假獨立性,執行者少開一個是白燒主 session 的 context</li>
           <li><strong>檢查者</strong> —— <strong>acceptance-verifier</strong>(做對了沒)、<strong>plan-verifier</strong>(動工前只讀規格的冷讀),都只當 Codex 不可用時的退路。同模型分身共享同一套誤讀,要獨立就跨模型走 L5。工具收斂成白名單並停用委派</li>
-          <li><strong>執行者</strong> —— <strong>mech-executor</strong>(已完全指定的機械改動)、<strong>executor</strong>(範圍內容許技術判斷),釘 sonnet。目的不是獨立性是省額度:跑在獨立 context,主 session 只收最後一則訊息。都不收安全敏感工作 —— 契約是「照規格做完」,而安全最需要的正是「規格本身有沒有漏洞」的判斷</li>
+          <li><strong>執行者</strong> —— 只有一支 <strong>executor</strong>(機械改動與有界技術判斷都歸它),釘 sonnet。目的不是獨立性是省額度:跑在獨立 context,主 session 只收最後一則訊息。不收安全敏感工作 —— 契約是「照規格做完」,而安全最需要的正是「規格本身有沒有漏洞」的判斷</li>
+          <li><strong>direct-first</strong> —— 預設主 session 自己做。只有使用者明說要委派、兩條以上真正獨立可平行、或搜尋會吃掉大量 context 才派;實測完整編排的 token 與延遲大多落在主 session,不在便宜的 child</li>
           <li><strong>探索者</strong> —— <strong>Explore</strong> 覆寫內建版,釘死 haiku:內建版會繼承主 session 模型,等於用最貴的配置做最不需要判斷的全庫搜尋</li>
           <li>另用內建 <strong>Plan</strong>(架構設計)</li>
           <li>原則:<strong>生成者 ≠ 驗收者</strong> —— 同脈絡的模型無法誠實評自己的產物;角色邊界靠 frontmatter 釘死,不靠規則叮嚀。<strong>省的是模型階層與 context 隔離,不是 effort</strong> —— 實測 97% 成本是長 session 重送 context、reasoning 只占 0.1%</li>
@@ -384,6 +385,7 @@
         <p class="loc">Codex CLI(跨模型)</p>
         <ul>
           <li><code>/codex-review</code> 品質 · <code>/codex-verify</code> 驗收 · 難 bug 第二意見</li>
+          <li><strong>按風險分三個檔位</strong>:<code>fast</code> 只跑最小檢查 · <code>default</code> 改 <code>passing</code> 前做獨立驗收,有具體 code risk 才加 review · <code>strict</code>(安全邊界、不可逆操作、資料/schema/migration、發行)review 與驗收都跑並留 rollback 證據。檔案多、純 UI、對模型沒信心,單獨都不升級</li>
           <li><strong>額度 fallback</strong>:主力模型見底 → 切「Codex 為主、主力當 reviewer」,跨模型獨立性不變</li>
           <li>驗收鐵律:<strong>只餵 PRD + 成品,不給開發過程</strong>,對照 acceptance 逐條檢查附證據</li>
         </ul>
@@ -395,7 +397,7 @@
         <ul>
           <li><strong>L1</strong>(動工日):<code>CLAUDE.md</code> + <code>init.sh</code> + <code>feature_list.json</code> —— acceptance 凍結、evidence 閘門、feature 之間的 <code>prerequisites</code> 明確申報(沒申報就當「未申報」,不當成「沒有相依」)</li>
           <li><strong>L2</strong>(第一次沒做完就收工):<code>session-handoff.md</code> + <code>ARCHITECTURE.md</code></li>
-          <li><strong>L3</strong>(難查的 bug 或功能 &gt; 5):結構化日誌 + 邊界 guard + 驗收角色分離</li>
+          <li><strong>L3</strong>(由事故或高風險觸發:同型錯誤重複發生、bug 無法從既有 log 定位、邊界違規曾發生、或進入 strict 風險面):結構化日誌 + 邊界 guard + 驗收角色分離。<strong>feature 數量不再是升級理由</strong></li>
           <li>跨 3 條以上 feature 的大工作,在規劃期就用 <strong>envelope</strong> 圈住共用約束與 non_goals 並簽核凍結;切出來的 slice 就是 feature,不另立第二套 ID。等 acceptance 都凍結了才發現要拆,只剩取代流程可走</li>
         </ul>
       </div>

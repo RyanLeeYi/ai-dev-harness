@@ -154,7 +154,7 @@
 角色**依用途分層**,而不是一條「少開 subagent」的通則。分錯層的代價方向相反:檢查者多開一個是假的獨立性,執行者少開一個是白燒主 session 的 context。
 
 - **檢查者**(review / 驗收)—— 不開同模型分身。同一顆模型的分身共享同一套誤讀,獨立性是假的;要獨立就跨模型走 L5。`acceptance-verifier`(做對了沒)與 `plan-verifier`(動工前只讀規格的冷讀)都只當 Codex 不可用時的退路。工具收斂成白名單,並停用委派:檢查者不該再外包出去
-- **執行者**(範圍已定的實作)—— `mech-executor`(已完全指定的機械改動)與 `executor`(範圍內容許技術判斷),frontmatter 釘 sonnet。目的不是獨立性,是**省額度**:工作跑在獨立 context,主 session 只收最後一則訊息。兩者都停用委派、都不收安全敏感工作 —— 它們的契約是「照規格做完、不多想」,而安全最需要的正是「規格本身有沒有漏洞」那個判斷
+- **執行者**(範圍已定的實作)—— 只有一支 `executor`(機械改動與有界技術判斷都歸它),frontmatter 釘 sonnet。目的不是獨立性,是**省額度**:工作跑在獨立 context,主 session 只收最後一則訊息。停用委派、不收安全敏感工作 —— 它的契約是「照規格做完、不多想」,而安全最需要的正是「規格本身有沒有漏洞」那個判斷。**預設是主 session 直接做**(direct-first):只有使用者明說要委派、或兩條以上真正獨立可平行、或搜尋會吃掉大量 context 才派出去 —— 實測完整編排的 token 與延遲成本大多落在主 session,不是落在便宜的 child
 - **探索者**(唯讀搜尋)—— `Explore` **覆寫內建版**,釘死 haiku。Claude Code v2.1.198 起內建 Explore 會**繼承主 session 模型**,等於用最貴的配置做最不需要判斷的全庫搜尋
 - 另用內建 `Plan`(架構)
 
@@ -165,6 +165,7 @@
 #### L5 跨模型檢查者 · Codex CLI
 
 - `/codex-review`(品質)、`/codex-verify`(驗收)、難 bug 第二意見
+- **按風險分三個檔位,不是每次都跑全套**:`fast`(低風險、可逆、局部、沒有正式 feature)只跑最小檢查;`default`(一般功能/bugfix)在改 `passing` 前做獨立驗收,有具體 code risk 才加 review;`strict`(安全與信任邊界、不可逆操作、資料/schema/migration、發行、跨元件關鍵流程)review 與驗收都跑並留 rollback 證據。檔案多、純 UI、或「對模型沒信心」單獨都不升級 —— 看的是失敗後果與可逆性
 - **額度 fallback**:主力模型見底時切「Codex 為主、主力當 reviewer」,跨模型獨立性不變
 - 驗收鐵律:**只餵 PRD + 成品,不給開發過程**,對照 acceptance 逐條檢查附證據
 
@@ -176,7 +177,7 @@
 
 - **L1**(動工日):`CLAUDE.md` + `init.sh` + `feature_list.json` —— 範圍與驗收的狀態機,acceptance 凍結、evidence 閘門、feature 之間的 `prerequisites` 明確申報
 - **L2**(第一次沒做完就收工):`session-handoff.md` + `docs/ARCHITECTURE.md`
-- **L3**(難查的 bug 或功能 &gt; 5):結構化日誌 + 邊界 guard 腳本 + 驗收角色分離
+- **L3**(由事故或高風險觸發:同型錯誤重複發生、bug 無法從既有 log 定位、邊界違規曾實際發生、或進入 strict 風險面):結構化日誌 + 邊界 guard 腳本 + 驗收角色分離。**feature 數量不再是升級理由** —— 沒有證明價值的 L3 組件應在 retro 中移除
 
 > **相依關係要申報,不申報就當「未申報」而不是「沒有」。** 沒有 `prerequisites`,「下一條做哪個」只能從 id 大小猜,而 id 順序不等於相依順序;「這兩條能不能平行」則要三個條件同時成立 —— 不互為前置、動到的檔案無交集、依賴的資源無交集。
 >
