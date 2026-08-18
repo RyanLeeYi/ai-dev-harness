@@ -294,9 +294,9 @@
       <div class="cluster">
         <div class="rail"><span class="cl-letter">C</span><span class="cl-name">檢查</span></div>
         <div class="bands">
-          <button class="band" data-layer="5"><span class="code">L5</span><span class="bwrap"><span class="bname">跨模型檢查者</span><span class="bone">Codex 獨立驗收 / 第二意見 / 額度 fallback</span></span><span class="chip part">SHARED — 泛化</span></button>
+          <button class="band" data-layer="5"><span class="code">L5</span><span class="bwrap"><span class="bname">五階段生命週期與判決</span><span class="bone">Discovery→Plan→Approval→Execution→Verification,Approval 是硬關卡</span></span><span class="chip part">SHARED — 泛化</span></button>
           <button class="band" data-layer="4"><span class="code">L4</span><span class="bwrap"><span class="bname">Agent 角色</span><span class="bone">生成者 ≠ 驗收者(檢查者 · 執行者 · 探索者)</span></span><span class="chip part">SHARED — 泛化</span></button>
-          <button class="band" data-layer="3"><span class="code">L3</span><span class="bwrap"><span class="bname">技能庫</span><span class="bone">prd · review · verify · retro · superpowers</span></span><span class="chip part">SHARED — 概念</span></button>
+          <button class="band" data-layer="3"><span class="code">L3</span><span class="bwrap"><span class="bname">技能庫</span><span class="bone">harness-retro · harness-plan · project-memory</span></span><span class="chip part">SHARED — 概念</span></button>
         </div>
       </div>
       <!-- B -->
@@ -361,8 +361,8 @@
         <div class="card-top"><span class="cnum">L3</span><h3>技能庫</h3><span class="chip part">檢查</span></div>
         <p class="loc">~/.claude/skills/</p>
         <ul>
-          <li><strong>prd</strong> 需求 → 可自我驗證的規格 · <strong>codex-review</strong> 寫得好不好 · <strong>codex-verify</strong> 做對了沒 · <strong>harness-retro</strong> Meta Loop · <strong>harness-plan</strong> 範圍怎麼切、什麼順序、哪兩條可以平行 · <strong>project-memory</strong> 寫記憶</li>
-          <li>外掛 <strong>superpowers</strong>:brainstorming、TDD、systematic-debugging、writing-plans</li>
+          <li><strong>harness-retro</strong> Meta Loop · <strong>harness-plan</strong> 範圍怎麼切、什麼順序、哪兩條可以平行 · <strong>project-memory</strong> 寫記憶。訪談與 TDD、systematic-debugging 走外掛</li>
+          <li><strong>曾經有一個 prd skill,2026/08 移除</strong> —— 它把完整規格寫進 <code>docs/prd/</code>,<code>feature_list.json</code> 只留一行指過去。問題在衝突規則:「以 PRD 為準」指定的是<strong>唯一沒有凍結保護的那一份</strong>,改 PRD 就能繞過 hook 的凍結。現在 <code>acceptance</code> 是唯一規格,必須自足;passing 之後整段移進 <code>docs/archive/</code></li>
         </ul>
       </div>
 
@@ -371,7 +371,7 @@
         <p class="loc">~/.claude/agents/ + 內建</p>
         <ul>
           <li>角色<strong>依用途分層</strong>,不是一條「少開 subagent」的通則 —— 分錯層的代價方向相反:檢查者多開一個是假獨立性,執行者少開一個是白燒主 session 的 context</li>
-          <li><strong>檢查者</strong> —— <strong>acceptance-verifier</strong>(做對了沒)、<strong>plan-verifier</strong>(動工前只讀規格的冷讀),都只當 Codex 不可用時的退路,例外是需要真瀏覽器操作的 UI 驗收(本機環境快又穩,且 UI 行為幾乎沒有誤讀空間;回報須註明獨立性降級)。同模型分身共享同一套誤讀,要獨立就跨模型走 L5。工具收斂成白名單並停用委派</li>
+          <li><strong>檢查者</strong> —— <strong>acceptance-verifier</strong>(做對了沒)、<strong>plan-verifier</strong>(動工前只讀規格的冷讀)。同模型分身共享同一套誤讀,所以<strong>只跑一個</strong>,不為了多視角疊第二個;獨立性來自 fresh context 與唯讀的凍結輸入,回報不得寫成跨模型獨立驗收。工具收斂成白名單並停用委派</li>
           <li><strong>執行者</strong> —— 只有一支 <strong>executor</strong>(機械改動與有界技術判斷都歸它),釘 sonnet。目的不是獨立性是省額度:跑在獨立 context,主 session 只收最後一則訊息。不收安全敏感工作 —— 契約是「照規格做完」,而安全最需要的正是「規格本身有沒有漏洞」的判斷</li>
           <li><strong>direct-first</strong> —— 預設主 session 自己做。只有使用者明說要委派、兩條以上真正獨立可平行、或搜尋會吃掉大量 context 才派;實測完整編排的 token 與延遲大多落在主 session,不在便宜的 child</li>
           <li><strong>探索者</strong> —— <strong>Explore</strong> 覆寫內建版,釘死 haiku:內建版會繼承主 session 模型,等於用最貴的配置做最不需要判斷的全庫搜尋</li>
@@ -381,13 +381,17 @@
       </div>
 
       <div class="card" id="layer-5">
-        <div class="card-top"><span class="cnum">L5</span><h3>跨模型檢查者</h3><span class="chip part">檢查</span></div>
-        <p class="loc">Codex CLI(跨模型)</p>
+        <div class="card-top"><span class="cnum">L5</span><h3>五階段生命週期與判決</h3><span class="chip part">檢查</span></div>
+        <p class="loc">rules/common/development-workflow.md</p>
         <ul>
-          <li><code>/codex-review</code> 品質 · <code>/codex-verify</code> 驗收 · 難 bug 第二意見</li>
+          <li><strong>五個階段一律經過</strong>:Discovery → Plan → Approval → Execution → Verification。檔位與階段垂直 —— 階段管順序,檔位管深度</li>
           <li><strong>按風險分三個檔位</strong>:<code>fast</code> 只跑最小檢查 · <code>default</code> 改 <code>passing</code> 前做獨立驗收,有具體 code risk 才加 review · <code>strict</code>(安全邊界、不可逆操作、資料/schema/migration、發行)review 與驗收都跑並留 rollback 證據。檔案多、純 UI、對模型沒信心,單獨都不升級</li>
-          <li><strong>額度 fallback</strong>:主力模型見底 → 切「Codex 為主、主力當 reviewer」,跨模型獨立性不變</li>
-          <li>驗收鐵律:<strong>只餵 PRD + 成品,不給開發過程</strong>,對照 acceptance 逐條檢查附證據</li>
+          <li><strong>Approval 是硬關卡</strong>:material work 先呈 Plan,等後續一輪明確核准才動原始碼 —— 一開始那句廣泛請求不算核准。大工作切 envelope + slice,<strong>envelope 簽核不等於底下都獲准</strong>,每輪只審下一個可執行的 slice</li>
+          <li><strong>判決分兩層</strong>:檢查者標 <code>P0</code>–<code>P4</code> + Confidence,主 session 給 <code>FIX</code>/<code>DEFER</code>/<code>REJECT</code>,選項被 severity 夾住(<code>P0</code> 只能修、<code>P1</code> 不可延後),<code>REJECT</code> 必須有證據</li>
+          <li><strong>重驗有預算</strong>:預設一次;高風險 <code>P1</code>/<code>P2</code> 最多五輪,第 3 輪起是緊急恢復。重派前比對 git 狀態 hash —— <strong>絕不重驗同一個狀態</strong></li>
+          <li>驗收鐵律:<strong>只餵凍結的 acceptance + 成品,不給開發過程</strong>,對照逐條檢查附證據</li>
+          <li><strong>這一層大多未經實測</strong> —— 來自 pilotfish 的設計論證,本地唯一一次對照實測方向相反,所以帶 <code>unproven</code> 標記交給 Meta Loop 定期追問</li>
+          <li><strong>曾經有一層跨模型檢查者(Codex CLI),2026/08 移除</strong> —— 論證沒錯,錯在漏寫前提「管道要穩定」。實際獨立性 = 理論值 × 可用率</li>
         </ul>
       </div>
 
@@ -406,7 +410,7 @@
         <div class="card-top"><span class="cnum">L7</span><h3>Vault 編排腦</h3><span class="chip part">記憶 &amp; 編排</span></div>
         <p class="loc">Obsidian 知識庫(git 版控)</p>
         <ul>
-          <li>軟體開發五檔組:PLAN / PRD / HARNESS / DEVLOG / DECISIONS</li>
+          <li>軟體開發四檔組:PLAN / HARNESS / DEVLOG / DECISIONS</li>
           <li>專案生命週期 backlog → 動工 → archive,配 after-action 收官 SOP</li>
           <li>DEVLOG 的「卡點與解法」同時是<strong>面試素材的原料</strong></li>
         </ul>
@@ -417,7 +421,7 @@
         <p class="loc">~/.claude/projects/.../memory/ + MEMORY.md</p>
         <ul>
           <li>跨 session 持久記憶,新 session 一開場就載入索引</li>
-          <li><strong>它記的正是這套 harness 本身</strong> —— hook 機制、用量邏輯、踩過的坑、Codex 分工定案</li>
+          <li><strong>它記的正是這套 harness 本身</strong> —— hook 機制、用量邏輯、踩過的坑、每一次分工變更的理由</li>
         </ul>
       </div>
 
@@ -427,7 +431,7 @@
         <ul>
           <li><strong>mission-control</strong> 服務中台(查狀態、start/stop、看 log)</li>
           <li>每帳號用量追蹤 → 餵給 L1 的 usage-guard;多帳號/多模型路由</li>
-          <li>切模型時要注意:別讓代理模式破壞跨模型驗收的獨立性</li>
+          <li>切模型時要注意:別讓代理模式讓「獨立」驗收其實跑在同源模型上</li>
         </ul>
       </div>
 
@@ -443,7 +447,7 @@
       <div class="pcard"><div class="pn">P1</div><h4>可靠性來自產物</h4><p>prompt 是易失記憶;檔案是持久、可版控、可審計的單一事實來源。新 agent 打開 repo 就該答得出「怎麼跑、做到哪、下一步、算不算完」。</p></div>
       <div class="pcard"><div class="pn">P2</div><h4>分層防禦</h4><p>每個失效點對應一層防線:失憶→交接檔、假完成→evidence 閘門、範圍蔓延→邊界規則、目標軟化→凍結 acceptance + hook DENY。</p></div>
       <div class="pcard"><div class="pn">P3</div><h4>規則要有牙齒</h4><p>「請遵守」對有最佳化壓力的 agent 沒用。關鍵約束由 PreToolUse hook 在執行前強制,不是靠自律。</p></div>
-      <div class="pcard"><div class="pn">P4</div><h4>生成與驗收分離</h4><p>生成的模型會偏袒自己的產物,驗收交給脈絡乾淨的另一顆模型,只餵 PRD + 成品。</p></div>
+      <div class="pcard"><div class="pn">P4</div><h4>生成與驗收分離</h4><p>生成的模型會偏袒自己的產物,驗收交給脈絡乾淨的另一個 session,只餵凍結的 acceptance + 成品。</p></div>
       <div class="pcard"><div class="pn">P5</div><h4>系統會自我改進</h4><p>trace + failures 餵進 Meta Loop,用實際數據做消融檢討,避免 harness 自己變成 cargo-cult。</p></div>
     </div>
   </div>
@@ -455,7 +459,7 @@
     <p class="sec-lede">踩過的坑 —— 這些通常比「我做了什麼」更值得在面試裡講。</p>
     <div class="lessons">
       <div class="lesson"><span class="lt">凍結≠不會錯</span><div><div class="ld">曾遇到驗收 fail 其實是「凍結的規格把既有現狀描述錯了」(規格 bug,不是實作 bug)。回簽核改規格,不硬改實作。凍結的是「目標」,不是「不會錯」。</div></div></div>
-      <div class="lesson"><span class="lt">獨立性會被基礎設施悄悄破壞</span><div><div class="ld">代理接管模式開啟時,以為在跑 Codex,實際跑的是同源模型,review 失去獨立性。跨模型檢查前要先確認路由。</div></div></div>
+      <div class="lesson"><span class="lt">獨立性會被基礎設施悄悄破壞</span><div><div class="ld">代理接管模式開啟時,以為在跑另一個模型,實際跑的是同源模型,review 失去獨立性。凡是宣稱「獨立」的檢查先確認路由;做不到就如實寫成同模型 fresh context。</div></div></div>
       <div class="lesson"><span class="lt">消融檢討防 cargo-cult</span><div><div class="ld">每個組件都有維護成本。收官時用 trace 數據問「這層真的擋住問題了嗎」,沒發揮作用的下個專案不照抄。小專案停在 L1 是正確的。</div></div></div>
       <div class="lesson"><span class="lt">檔案瘦身 = context 預算</span><div><div class="ld">分「每 session 都讀的操作檔(保持精瘦)」vs「收官才讀的檔案庫(不縮)」,避免歷史雜訊塞爆 context。</div></div></div>
       <div class="lesson"><span class="lt">防線會無聲失效,所以防線本身要被監測</span><div><div class="ld">hook 是 fail-open 設計:欄位讀不到就靜默放行。上游改一次 payload 契約,整道防線關閉而 trace 照記 <code>ok</code>,看起來比平常還健康。回歸測試只在「我改動它」時跑,擋不住「它自己壞掉」。</div></div></div>

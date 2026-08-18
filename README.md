@@ -22,7 +22,7 @@
 - **回饋迴路** —— trace + failure 數據餵進 Meta Loop,讓 harness 依實際數據自我改進
 - **Context 預算管理** —— 分「常駐操作檔」vs「檔案庫」,控制每個 session 的 token 成本
 
-*技術接觸點:Claude Code hooks · Codex CLI(跨模型)· MCP · Obsidian + git · Python*
+*技術接觸點:Claude Code hooks · subagents · MCP · Obsidian + git · Python*
 
 ---
 
@@ -75,9 +75,10 @@
         ├──────────────────────────────────────────────────────────┤
    D 產物 │  6  每個 repo 的 L1/L2/L3 漸進 harness  ← 可轉移的那層     │
         ├──────────────────────────────────────────────────────────┤
-   C 檢查 │  5  跨模型檢查者(Codex 獨立驗收 / 第二意見 / 額度 fallback)│
+   C 檢查 │  5  五階段生命週期:Discovery→Plan→Approval→Execution   │
+        │     →Verification,Approval 是硬關卡                    │
         │  4  Agent 角色:檢查者 · 執行者 · 探索者(依用途分層)       │
-        │  3  技能庫(prd · review · verify · retro · superpowers)   │
+        │  3  技能庫(harness-retro · harness-plan · project-memory)│
         ├──────────────────────────────────────────────────────────┤
    B 強制 │  2  Meta Loop:trace + failures → eval → 改進(自我改進)   │
         │  1  Hooks:SessionStart 注入常駐入口 · PreToolUse 攔越權    │
@@ -147,13 +148,15 @@
 
 #### L3 技能庫 · `~/.claude/skills/`
 
-`prd`(需求→可驗證規格)· `codex-review`(寫得好不好)· `codex-verify`(做對了沒)· `harness-retro`(Meta Loop)· `harness-plan`(範圍怎麼切、什麼順序、哪兩條可以平行)· `project-memory`(寫記憶)。外掛 `superpowers`:brainstorming、TDD、systematic-debugging、writing-plans。
+`harness-retro`(Meta Loop)· `harness-plan`(範圍怎麼切、什麼順序、哪兩條可以平行)· `project-memory`(寫記憶)。訪談與 TDD、systematic-debugging 走外掛。
+
+**曾經有一個 `prd` skill,2026/08 移除。** 它把完整規格寫進 `docs/prd/`,`feature_list.json` 只留一行摘要指過去 —— 追蹤看 feature_list、判定對錯看 PRD。切得有道理,問題在衝突規則:「以 PRD 為準」指定的是**唯一沒有凍結保護的那一份**,改 PRD 就能實質繞過 hook 的凍結,而且要到驗收啟動那一刻才會被發現。現在 `feature_list.json` 的 `acceptance` 是唯一規格,必須自足到能逐條判定;passing 之後整段移進 `docs/archive/`,掃視性回來了而原文一字沒少。
 
 #### L4 Agent 角色 · `~/.claude/agents/` + 內建
 
 角色**依用途分層**,而不是一條「少開 subagent」的通則。分錯層的代價方向相反:檢查者多開一個是假的獨立性,執行者少開一個是白燒主 session 的 context。
 
-- **檢查者**(review / 驗收)—— 不開同模型分身。同一顆模型的分身共享同一套誤讀,獨立性是假的;要獨立就跨模型走 L5。`acceptance-verifier`(做對了沒)與 `plan-verifier`(動工前只讀規格的冷讀)都只當 Codex 不可用時的退路。**唯一的例外是需要真瀏覽器操作的 UI 驗收** —— 本機環境已裝好瀏覽器,跑起來比跨模型沙箱快又穩,而「按鈕點下去有沒有反應」幾乎沒有誤讀規格的空間;用這條路要在回報裡註明獨立性降級。工具收斂成白名單,並停用委派:檢查者不該再外包出去
+- **檢查者**(review / 驗收)—— 不開同模型分身。同一顆模型的分身共享同一套誤讀,獨立性是假的;所以**只跑一個**,不為了「多視角」疊第二個。`acceptance-verifier`(做對了沒)與 `plan-verifier`(動工前只讀規格的冷讀)是主路徑,獨立性來自 fresh context 與唯讀的凍結輸入,不是來自不同模型 —— 回報時不得寫成跨模型獨立驗收。工具收斂成白名單,並停用委派:檢查者不該再外包出去
 - **執行者**(範圍已定的實作)—— 只有一支 `executor`(機械改動與有界技術判斷都歸它),frontmatter 釘 sonnet。目的不是獨立性,是**省額度**:工作跑在獨立 context,主 session 只收最後一則訊息。停用委派、不收安全敏感工作 —— 它的契約是「照規格做完、不多想」,而安全最需要的正是「規格本身有沒有漏洞」那個判斷。**預設是主 session 直接做**(direct-first):只有使用者明說要委派、或兩條以上真正獨立可平行、或搜尋會吃掉大量 context 才派出去 —— 實測完整編排的 token 與延遲成本大多落在主 session,不是落在便宜的 child
 - **探索者**(唯讀搜尋)—— `Explore` **覆寫內建版**,釘死 haiku。Claude Code v2.1.198 起內建 Explore 會**繼承主 session 模型**,等於用最貴的配置做最不需要判斷的全庫搜尋
 - 另用內建 `Plan`(架構)
@@ -162,12 +165,19 @@
 >
 > 模型分層與角色邊界不靠規則叮嚀,靠 frontmatter 釘死 —— 與 L1 同一個思路:**能寫進 capability 的,就不要只寫進文件。** 代價是自訂角色會載入全域記憶(內建的會跳過),每個角色都在付這筆 context 稅,所以角色數量壓到最低。
 
-#### L5 跨模型檢查者 · Codex CLI
+#### L5 五階段生命週期與判決
 
-- `/codex-review`(品質)、`/codex-verify`(驗收)、難 bug 第二意見
+**五個階段一律經過**:Discovery → Plan → Approval → Execution → Verification。檔位與階段垂直 —— 階段管順序與「派工前要穩定什麼」,檔位管每個階段做多深。
+
 - **按風險分三個檔位,不是每次都跑全套**:`fast`(低風險、可逆、局部、沒有正式 feature)只跑最小檢查;`default`(一般功能/bugfix)在改 `passing` 前做獨立驗收,有具體 code risk 才加 review;`strict`(安全與信任邊界、不可逆操作、資料/schema/migration、發行、跨元件關鍵流程)review 與驗收都跑並留 rollback 證據。檔案多、純 UI、或「對模型沒信心」單獨都不升級 —— 看的是失敗後果與可逆性
-- **額度 fallback**:主力模型見底時切「Codex 為主、主力當 reviewer」,跨模型獨立性不變
-- 驗收鐵律:**只餵 PRD + 成品,不給開發過程**,對照 acceptance 逐條檢查附證據
+- **Approval 是硬關卡**:material work 一律先呈 Plan,**等使用者在後續一輪明確核准**才准動原始碼。使用者一開始那句廣泛的請求不算核准 —— 對一份他還沒看過的 Plan,原始請求構不成同意。大工作在 Plan 切成 envelope + slice,**envelope 簽核一次不等於底下所有 slice 都獲准動工**:先審 envelope,之後每輪只審下一個可執行的 slice
+- **判決分兩層**:檢查者標 `P0`–`P4` + Confidence + Recheck,主 session 逐條給 `FIX`/`DEFER`/`REJECT`。選項被 severity 夾住(`P0` 只能修、`P1` 不可延後、本次引入的 `P2` 必修),`REJECT` 必須有證據。範圍(`out-of-scope`)是另一個軸,由主 session 標 —— 嚴重度是檢查者看得出的事實,範圍是它刻意看不到的脈絡
+- **重驗有預算**:預設一次針對性重驗;高風險 `P1`/`P2` 最多五輪,第 3 輪起是緊急恢復不是配額。每輪要有實質變更,重派前比對 git 狀態的 hash —— **絕不重驗同一個狀態**
+- 驗收鐵律:**只餵凍結的 acceptance + 成品,不給開發過程**,對照逐條檢查附證據
+
+> **這一層大多未經實測。** 五階段、兩層判決、slice 關卡、五輪預算來自 [pilotfish](https://github.com/Nanako0129/pilotfish) 的設計論證;本地唯一一次對照實測(Baseline vs 完整 Harness)方向相反。所以規則帶 `unproven` 標記,由 Meta Loop 定期逐條問「它實際擋到什麼了嗎」,擋不到就刪。
+
+**曾經有一層跨模型檢查者(Codex CLI),2026/08 移除。** 論證沒錯 —— 同模型分身共享同一套誤讀,跨模型才是真獨立。錯在漏寫前提:**管道要穩定**。三週半實測下來,沙箱 ACL、認證、額度、環境恢復的故障率讓「實際獨立性 = 理論值 × 可用率」,排除環境假陰性的成本高於換來的獨立性。代償往前移到動工前的規格冷讀。
 
 ### D · 產物 — 唯一可轉移的一層
 
@@ -187,11 +197,11 @@
 
 #### L7 Vault 編排腦 · Obsidian 知識庫(git 版控)
 
-管的是 repo 之外的「為什麼做、收官、知識沉澱」:軟體開發五檔組(PLAN/PRD/HARNESS/DEVLOG/DECISIONS)、專案生命週期 backlog→動工→archive、after-action 收官 SOP、一個寡言軍師人格(Cub 🐻)。DEVLOG 的「卡點與解法」同時是**面試素材的原料**。
+管的是 repo 之外的「為什麼做、收官、知識沉澱」:軟體開發四檔組(PLAN/HARNESS/DEVLOG/DECISIONS)、專案生命週期 backlog→動工→archive、after-action 收官 SOP、一個寡言軍師人格(Cub 🐻)。DEVLOG 的「卡點與解法」同時是**面試素材的原料**。
 
 #### L8 記憶系統 · `~/.claude/projects/.../memory/` + `MEMORY.md`
 
-跨 session 持久,新 session 一開場就載入索引。有趣的是:**它記的正是這套 harness 本身** —— hook 機制、用量邏輯、踩過的坑、Codex 分工定案。系統的自我認知也被結構化保存。
+跨 session 持久,新 session 一開場就載入索引。有趣的是:**它記的正是這套 harness 本身** —— hook 機制、用量邏輯、踩過的坑、每一次分工變更的理由。系統的自我認知也被結構化保存。
 
 ### F · 運維 — 支撐所有層的底座
 
@@ -210,7 +220,7 @@
 1. **可靠性來自產物,不是 prompt。** prompt 是易失記憶;檔案是持久、可版控、可審計的單一事實來源。新 agent 打開 repo 就該答得出「怎麼跑、做到哪、下一步、算不算完」。
 2. **分層防禦(layered defense)。** 每個失效點對應一層防線,不靠單一機制擋所有問題。
 3. **規則要有牙齒。** 「請遵守」對有最佳化壓力的 agent 沒用。關鍵約束由 PreToolUse hook 在執行前強制,不是靠自律。
-4. **生成與驗收分離。** 生成的模型會偏袒自己的產物,驗收交給脈絡乾淨的另一顆模型,只餵 PRD + 成品。
+4. **生成與驗收分離。** 生成的模型會偏袒自己的產物,驗收交給脈絡乾淨的另一個 session,只餵凍結的 acceptance + 成品。
 5. **系統會自我改進。** trace + failures 餵進 Meta Loop,用實際數據做消融檢討,避免 harness 自己變成 cargo-cult。
 
 ---
@@ -220,7 +230,7 @@
 踩過的坑 —— 這些通常比「我做了什麼」更值得在面試裡講:
 
 - **凍結 ≠ 不會錯** —— 曾遇到驗收 fail 其實是「凍結的規格把既有現狀描述錯了」(規格 bug,不是實作 bug)。回簽核改規格,不硬改實作。凍結的是「目標」,不是「不會錯」。
-- **獨立性會被基礎設施悄悄破壞** —— 代理接管模式開啟時,以為在跑 Codex,實際跑的是同源模型,review 失去獨立性。跨模型檢查前要先確認路由。
+- **獨立性會被基礎設施悄悄破壞** —— 代理接管模式開啟時,以為在跑另一個模型,實際跑的是同源模型,review 失去獨立性。凡是宣稱「獨立」的檢查,先確認路由;做不到就如實寫成同模型 fresh context。
 - **消融檢討防 cargo-cult** —— 每個組件都有維護成本。收官時用 trace 數據問「這層真的擋住問題了嗎」,沒發揮作用的下個專案不照抄。小專案停在 L1 是正確的,不是偷懶。
 - **檔案瘦身 = context 預算** —— 分「每 session 都讀的操作檔(保持精瘦)」vs「收官才讀的檔案庫(不縮)」,避免歷史雜訊塞爆 context。
 - **防線會無聲失效,所以防線本身要被監測** —— hook 是 fail-open 設計:欄位讀不到就靜默放行。上游改一次 payload 契約,整道防線關閉而 trace 照記 `ok`,看起來比平常還健康。回歸測試只在「我改動它」時跑,擋不住「它自己壞掉」。現在 retro 開場無條件先驗機制活著,再談資料判讀 —— 機制失效期間的 trace 本來就不可信。
