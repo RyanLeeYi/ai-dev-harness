@@ -4,7 +4,7 @@
 
 > 核心信念 —— *agent 的可靠性不來自 prompt 寫得多好,來自 repo 裡的結構化產物、包在外面的強制機制,與會自我改進的回饋迴路。*
 
-🔩 **[互動式系統剖面圖(視覺版)↗](https://ryanleeyi.github.io/ai-dev-harness/overview.html)** &nbsp;·&nbsp; 📦 可轉移框架 → **[harness-for-builders ↗](https://github.com/RyanLeeYi/harness-for-builders)**
+🔩 **[互動式系統剖面圖(視覺版)↗](https://ryanleeyi.github.io/ai-dev-harness/overview.html)** &nbsp;·&nbsp; 🧭 **[五階段作業圖(一件事怎麼走)↗](https://ryanleeyi.github.io/ai-dev-harness/flow.html)** &nbsp;·&nbsp; 📦 可轉移框架 → **[harness-for-builders ↗](https://github.com/RyanLeeYi/harness-for-builders)**
 
 > 📎 **分享安全**:本文描述機制的「功能與設計」,不含帳號、密鑰、私人路徑。個人運維細節刻意省略。
 
@@ -247,3 +247,4 @@
 - **想直接拿去用?** 這份是我個人的設定;可轉移的框架在 → [harness-for-builders](https://github.com/RyanLeeYi/harness-for-builders)。
 - **方法論來源**:[Learn Harness Engineering](https://walkinglabs.github.io/learn-harness-engineering/zh-TW/projects/)。
 - 視覺版(互動剖面圖):[ryanleeyi.github.io/ai-dev-harness/overview.html](https://ryanleeyi.github.io/ai-dev-harness/overview.html)
+- 作業圖(五階段決策流程):[ryanleeyi.github.io/ai-dev-harness/flow.html](https://ryanleeyi.github.io/ai-dev-harness/flow.html)

@@ -1,0 +1,393 @@
+<meta charset="utf-8">
+<title>AI Development Harness — 五階段作業圖</title>
+<style>
+  :root {
+    --paper: #e8ecf1;
+    --surface: #f4f7fa;
+    --surface-2: #ffffff;
+    --ink: #131922;
+    --ink-soft: #57616e;
+    --ink-faint: #8792a0;
+    --line: #ccd4de;
+    --line-soft: #DDE2E7;
+    --gate: #9E2440;
+    --flow: #2350c8;
+    --warn: #96600F;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "DejaVu Sans Mono", monospace;
+    --body: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10131A;
+      --surface: #191E27;
+      --surface-2: #1F2530;
+      --ink: #E3E7EC;
+      --ink-soft: #A2ACBA;
+      --ink-faint: #75808F;
+      --line: #2F3846;
+      --line-soft: #262E3A;
+      --gate: #E4788E;
+      --flow: #5FB8C3;
+      --warn: #D6A353;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10131A;
+    --surface: #191E27;
+    --surface-2: #1F2530;
+    --ink: #E3E7EC;
+    --ink-soft: #A2ACBA;
+    --ink-faint: #75808F;
+    --line: #2F3846;
+    --line-soft: #262E3A;
+    --gate: #E4788E;
+    --flow: #5FB8C3;
+    --warn: #D6A353;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    line-height: 1.65;
+    font-size: 16px;
+  }
+  .wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+
+  header { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(26px, 4vw, 36px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede { margin: 0; max-width: 62ch; color: var(--ink-soft); }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  section { display: flex; flex-direction: column; gap: 18px; }
+  h2 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  h2 span { color: var(--ink-faint); font-weight: 400; }
+  p { margin: 0; max-width: 68ch; }
+  .note { color: var(--ink-soft); font-size: 14.5px; }
+  .note b { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    padding: 0.05em 0.34em;
+  }
+
+  figure { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  .scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 8px; }
+  svg { display: block; max-width: 100%; height: auto; color: var(--ink); }
+  figcaption { font-size: 13.5px; color: var(--ink-soft); max-width: 68ch; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line-soft); }
+  thead th {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    border-bottom: 1px solid var(--line);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; white-space: nowrap; color: var(--ink); }
+  .tbl { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; overflow-x: auto; }
+
+  .matrix { display: grid; grid-template-columns: 116px 1fr 1fr; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--surface); }
+  .matrix > div { padding: 14px; border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+  .matrix > div:nth-child(3n) { border-right: none; }
+  .matrix > div:nth-last-child(-n+3) { border-bottom: none; }
+  .mh {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--surface-2);
+  }
+  .mr { font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); background: var(--surface-2); }
+  .mc { font-size: 14px; }
+  .mc b { display: block; font-family: var(--mono); font-size: 13px; margin-bottom: 3px; color: var(--flow); }
+  .mc.gate b { color: var(--gate); }
+
+  .gatebox {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gate);
+    border-radius: 4px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .gatebox .t { font-family: var(--mono); font-size: 13px; color: var(--gate); letter-spacing: 0.04em; }
+  .gatebox p { font-size: 14.5px; color: var(--ink-soft); }
+  .gatebox p b { color: var(--ink); font-weight: 600; }
+
+  footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 13px; color: var(--ink-faint); font-family: var(--mono); }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">~/.claude · rules/common · 2026-08-18</div>
+  <h1>Harness 五階段作業圖</h1>
+  <p class="lede">這是 <a href="./overview.html">系統剖面圖</a>的另一半：剖面講「有哪些層」，這頁講「一件事進來怎麼走」。<b>五個階段一律經過</b>，檔位只改每階段的深度，不改要不要走。圖裡的紅色是硬關卡——不是提醒，是停下來。</p>
+</header>
+
+<section>
+  <h2>主流程 <span>／ 一件事從進來到收尾</span></h2>
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 940 980" role="img" aria-label="Harness 主流程：preflight 之後判斷 acceptance 是否已凍結，再依序經過 Discovery、Plan、Approval 硬關卡、Execution、Verification 與收尾。三條分支都畫出回到主線的路徑：已凍結直接接續 Execution、核准後動工、驗收未過回 Execution 修。">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--gate)"/>
+          </marker>
+        </defs>
+
+        <g font-family="ui-monospace, Consolas, monospace" fill="currentColor">
+
+          <!-- r1 entry -->
+          <rect x="115" y="14" width="230" height="38" rx="19" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="230" y="38" text-anchor="middle" font-size="14">一件事進來</text>
+          <line x1="230" y1="52" x2="230" y2="76" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r2 preflight -->
+          <rect x="40" y="82" width="380" height="76" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="60" y="110" font-size="15" font-weight="600">Preflight</text>
+          <text x="60" y="132" font-size="12" fill="currentColor" opacity="0.72">repo root · git status --short · AGENTS.md</text>
+          <text x="60" y="149" font-size="12" fill="currentColor" opacity="0.72">handoff · feature_list · current_feature</text>
+          <line x1="420" y1="120" x2="464" y2="120" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="474" y="110" font-size="12" opacity="0.8">git status 也是唯一會揭露</text>
+          <text x="474" y="127" font-size="12" opacity="0.8">sibling session 的東西</text>
+          <text x="474" y="144" font-size="12" opacity="0.55">hook 看不到另一個視窗</text>
+          <line x1="230" y1="158" x2="230" y2="182" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r3 diamond frozen -->
+          <polygon points="230,188 420,226 230,264 40,226" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="230" y="231" text-anchor="middle" font-size="14">acceptance 已 frozen？</text>
+          <line x1="420" y1="226" x2="464" y2="226" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+          <text x="440" y="217" font-size="11" opacity="0.7">是</text>
+          <rect x="470" y="196" width="390" height="60" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.75"/>
+          <text x="486" y="221" font-size="13">直接接續 Execution</text>
+          <text x="486" y="240" font-size="12" opacity="0.7">不重跑 Discovery 與 Plan，不重新 brainstorming</text>
+          <text x="240" y="282" font-size="11" opacity="0.7">否</text>
+          <line x1="230" y1="264" x2="230" y2="294" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r4 discovery -->
+          <rect x="40" y="294" width="380" height="62" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="60" y="320" font-size="15" font-weight="600">1 · Discovery</text>
+          <text x="60" y="341" font-size="12" opacity="0.72">派工前要穩定：問題 · 範圍 · 證據格式 · 停止條件</text>
+          <line x1="420" y1="325" x2="464" y2="325" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="474" y="320" font-size="12" opacity="0.8">可派 Explore（唯讀）</text>
+          <text x="474" y="338" font-size="12" opacity="0.55">證據的「意義」不外包</text>
+          <line x1="230" y1="356" x2="230" y2="386" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r5 plan -->
+          <rect x="40" y="386" width="380" height="62" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="60" y="412" font-size="15" font-weight="600">2 · Plan</text>
+          <text x="60" y="433" font-size="12" opacity="0.72">outcome · 非目標 · 相依 · 順序 · 驗證方式 · 停止點</text>
+          <line x1="420" y1="417" x2="464" y2="417" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="474" y="412" font-size="12" opacity="0.8">可派 plan-verifier 冷讀</text>
+          <text x="474" y="430" font-size="12" opacity="0.55">Plan 自己綜合、自己改</text>
+          <text x="474" y="449" font-size="12" opacity="0.55">大工作在這裡一次切完 envelope ＋ slice</text>
+          <line x1="230" y1="448" x2="230" y2="478" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r6 diamond approval -->
+          <polygon points="230,478 420,516 230,554 40,516" fill="none" stroke="var(--gate)" stroke-width="1.8"/>
+          <text x="230" y="513" text-anchor="middle" font-size="14" fill="var(--gate)" font-weight="600">3 · Approval：material work？</text>
+          <text x="230" y="531" text-anchor="middle" font-size="11" fill="var(--gate)" opacity="0.8">大／架構／有風險／需要先規劃</text>
+          <line x1="420" y1="516" x2="464" y2="516" stroke="var(--gate)" stroke-width="1.6" marker-end="url(#ahg)"/>
+          <text x="440" y="507" font-size="11" fill="var(--gate)">是</text>
+          <rect x="470" y="482" width="390" height="68" rx="3" fill="none" stroke="var(--gate)" stroke-width="1.4"/>
+          <text x="486" y="507" font-size="13" fill="var(--gate)" font-weight="600">呈 Plan，結束這一輪</text>
+          <text x="486" y="526" font-size="12" fill="var(--gate)" opacity="0.85">等下一輪明確核准才動原始碼 · 每個 slice 各自過</text>
+          <text x="486" y="543" font-size="12" fill="var(--gate)" opacity="0.7">原始那句廣泛請求不算核准 · 核准＝簽核與 acceptance 凍結</text>
+          <text x="240" y="572" font-size="11" opacity="0.7">否</text>
+          <line x1="230" y1="554" x2="230" y2="584" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- 三條分支的回線：全部收束回 Execution -->
+          <path d="M 860 226 H 900 V 570" fill="none" stroke="currentColor" stroke-width="1.1" opacity="0.65"/>
+          <path d="M 860 806 H 920 V 570" fill="none" stroke="currentColor" stroke-width="1.1" opacity="0.65"/>
+          <path d="M 665 550 V 570" fill="none" stroke="var(--gate)" stroke-width="1.6"/>
+          <text x="674" y="566" font-size="11" fill="var(--gate)">核准後才動工</text>
+          <path d="M 920 570 H 310 V 578" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r7 execution -->
+          <rect x="40" y="584" width="380" height="62" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="60" y="610" font-size="15" font-weight="600">4 · Execution</text>
+          <text x="60" y="631" font-size="12" opacity="0.72">預設主 session 自己做（direct-first）</text>
+          <line x1="420" y1="615" x2="464" y2="615" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="474" y="610" font-size="12" opacity="0.8">派 executor 一律 worktree</text>
+          <text x="474" y="628" font-size="12" opacity="0.55">沒設就被 hook deny，不看髒不髒</text>
+          <line x1="230" y1="646" x2="230" y2="676" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r8 verification -->
+          <rect x="40" y="676" width="380" height="62" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="60" y="702" font-size="15" font-weight="600">5 · Verification</text>
+          <text x="60" y="723" font-size="12" opacity="0.72">實作要具體到可以被反駁</text>
+          <line x1="420" y1="707" x2="464" y2="707" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="474" y="702" font-size="12" opacity="0.8">default：acceptance-verifier</text>
+          <text x="474" y="720" font-size="12" opacity="0.8">strict：再加 /code-review</text>
+          <text x="474" y="737" font-size="12" opacity="0.55">只讀 feature_list 的 acceptance，不讀其他規格文件</text>
+          <line x1="230" y1="738" x2="230" y2="768" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r9 diamond verdict -->
+          <polygon points="230,768 420,806 230,844 40,806" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="230" y="811" text-anchor="middle" font-size="14">逐條通過？</text>
+          <line x1="420" y1="806" x2="464" y2="806" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+          <text x="440" y="797" font-size="11" opacity="0.7">否</text>
+          <rect x="470" y="776" width="390" height="60" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.75"/>
+          <text x="486" y="801" font-size="13">回 Execution，依 P0–P4 處置</text>
+          <text x="486" y="820" font-size="12" opacity="0.7">同一 feature 自動重驗 2 次仍未過就停下來問</text>
+          <text x="240" y="862" font-size="11" opacity="0.7">是</text>
+          <line x1="230" y1="844" x2="230" y2="874" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+
+          <!-- r10 close -->
+          <rect x="40" y="874" width="380" height="62" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="60" y="900" font-size="15" font-weight="600">收尾</text>
+          <text x="60" y="921" font-size="12" opacity="0.72">handoff · vault DEVLOG／DECISIONS · git status · commit</text>
+          <line x1="420" y1="905" x2="464" y2="905" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="474" y="900" font-size="12" opacity="0.8">形成可回滾單位才 commit</text>
+          <text x="474" y="918" font-size="12" opacity="0.55">push 需另有授權</text>
+
+        </g>
+      </svg>
+    </div>
+    <figcaption>左欄是階段順序，右欄是那一階段可以派給誰、以及什麼不能外包。三條分支都收束回同一個地方——Execution：acceptance 已凍結就直接進去、核准之後才進去、驗收沒過回去修。紅色只有一處：Approval 是唯一會讓你停在原地等人的關卡。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Approval <span>／ 唯一的硬關卡</span></h2>
+  <div class="gatebox">
+    <div class="t">material work → 呈 Plan → 停</div>
+    <p><b>「使用者一開始那句廣泛的請求」不算核准。</b>對一份他還沒看過的 Plan，原始請求構不成同意。停下來的形式就是呈 Plan 並結束該輪，不需要一個按鈕。</p>
+    <p>核准前可以做唯讀釐清，不可以做任何來源變更。低風險、可逆、局部的工作不是 material work——階段照走，關卡不觸發。</p>
+  </div>
+</section>
+
+<section>
+  <h2>檔位 <span>／ 決定每階段多深，不決定跳過哪階段</span></h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>檔位</th><th>什麼時候</th><th>做到哪</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>fast</td>
+          <td>低風險、可逆、局部，沒有正式 feature</td>
+          <td>直接做，跑最小檢查，不自動 review／verify</td>
+        </tr>
+        <tr>
+          <td>default</td>
+          <td>一般功能與 bugfix</td>
+          <td>frozen acceptance ＋最小回歸檢查；正式 feature 轉 passing 前派 acceptance-verifier</td>
+        </tr>
+        <tr>
+          <td>strict</td>
+          <td>安全與信任邊界、不可逆操作、資料／schema／migration、發行、跨元件關鍵流程</td>
+          <td>再加 /code-review 與 rollback 證據</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">升檔的判準是<b>失敗後果與可逆性</b>。檔案多、例行文件、純 UI、或「對模型沒信心」本身都不升級。</p>
+</section>
+
+<section>
+  <h2>派不派 <span>／ 預設是不派</span></h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>條件</th><th>成立才委派（三者任一）</th></tr></thead>
+      <tbody>
+        <tr><td>明說</td><td>使用者說了「委派／交給 executor／派給 subagent」</td></tr>
+        <tr><td>真平行</td><td>兩條以上真正獨立、檔案不重疊，而且主線還有事可做</td></tr>
+        <tr><td>省 context</td><td>搜尋或批次工作會吃掉大量 context，且輸入與停止條件完整</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">留在主 session 的：<b>未知 bug 的診斷</b>、需求／架構／整合取捨、最終決策、以及 authn／authz、密鑰、隱私、加密、輸入驗證這些安全面。寫入型派工缺任一要件就不派——目標、限制、done criteria、路徑、原因。</p>
+  <p class="note">派出去之後，<b>同一輪就排保溫鬧鐘</b>（<code>ScheduleWakeup 2700s</code>，＝ 60 分 TTL × 0.75）。鬧鐘會自我取消，所以不必先估這次要跑多久。</p>
+</section>
+
+<section>
+  <h2>檢查結果 <span>／ 兩層：檢查者標 severity，主 session 給處置</span></h2>
+  <figure>
+    <div class="matrix">
+      <div class="mh"></div>
+      <div class="mh">根因已知、修法明確</div>
+      <div class="mh">還在猜為什麼沒過</div>
+
+      <div class="mr">P0 · P1<br>P2（本次回歸）</div>
+      <div class="mc gate"><b>只能 FIX → 派 executor</b>P0 凍結下游並暫停；P1 不可 DEFER。檢查報告的逐條判定直接當目標與 done criteria</div>
+      <div class="mc gate"><b>只能 FIX → 主 session 自己來</b>未知 bug 的診斷是明列不可外包的那一類</div>
+
+      <div class="mr">P3 · P4</div>
+      <div class="mc"><b>預設 DEFER</b>範圍內順手修或留著；不推翻已成立的結論</div>
+      <div class="mc"><b>不阻斷，記錄</b>不為了它開一條診斷</div>
+    </div>
+    <figcaption>縱軸是嚴重度，由檢查者標（附 Confidence 與 Recheck），主 session 不覆寫它；但處置 <code>FIX</code>／<code>DEFER</code>／<code>REJECT</code> 是主 session 的決定，選項被嚴重度夾住，而 <code>REJECT</code> 必須有證據。橫軸是診斷狀態，決定誰動手，跟嚴重度無關。<code>out-of-scope</code> 是第三個軸，同樣由主 session 標：嚴重度是檢查者看得出的事實，範圍是它刻意看不到的脈絡。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Hook <span>／ 唯一真的有執行力的那層</span></h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>時機</th><th>腳本</th><th>做什麼</th></tr></thead>
+      <tbody>
+        <tr><td>Agent</td><td>delegation-warmup</td><td>派 executor 沒設 worktree 直接 deny；其餘注入保溫提醒</td></tr>
+        <tr><td>Edit｜Write｜Bash</td><td>harness-trace</td><td>記 trace、擋 destructive 指令與凍結 acceptance 的改動</td></tr>
+        <tr><td>Skill｜Read｜Write…</td><td>harness-gate</td><td>擋掉與 harness 規格終點競爭的流程</td></tr>
+        <tr><td>Write｜Edit</td><td>no-emoji-guard</td><td>擋寫進檔案的 emoji</td></tr>
+        <tr><td>每次工具呼叫</td><td>usage-guard</td><td>額度接近上限時提醒收工</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">規則寫在文件裡靠模型記得，對話一長就沉底；hook 出現在做決定的那一刻。<b>能寫進 hook 就不要只寫進文件</b>——這也是為什麼圖上只有 Execution 那格的 worktree 是真的擋得住，Approval 那格擋不住。</p>
+</section>
+
+<footer>
+  <a href="./overview.html" style="color:var(--flow)">← 系統剖面圖（有哪些層）</a><br><br>
+  三處五階段規則標了 unproven: 2026-08-17，方向與 F7 實測相反、尚無新證據。harness-retro 2.5 會逐條問「它實際擋到什麼了」，擋不到就刪。
+</footer>
+
+</div>
