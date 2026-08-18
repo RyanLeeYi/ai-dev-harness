@@ -287,7 +287,7 @@
       <div class="cluster">
         <div class="rail"><span class="cl-letter">D</span><span class="cl-name">產物</span><span class="cl-note">↑ 每個 repo 才有</span></div>
         <div class="bands">
-          <button class="band" data-layer="6"><span class="code">L6</span><span class="bwrap"><span class="bname">每個 repo 的產物</span><span class="bone">L1/L2/L3 漸進 harness — 唯一可轉移的一層</span></span><span class="chip full">SHARED — 全部</span></button>
+          <button class="band" data-layer="6"><span class="code">L6</span><span class="bwrap"><span class="bname">每個 repo 的產物</span><span class="bone">痛點觸發的 harness 產物 — 唯一可轉移的一層</span></span><span class="chip full">SHARED — 全部</span></button>
         </div>
       </div>
       <!-- C -->
@@ -371,7 +371,7 @@
         <p class="loc">~/.claude/agents/ + 內建</p>
         <ul>
           <li>角色<strong>依用途分層</strong>,不是一條「少開 subagent」的通則 —— 分錯層的代價方向相反:檢查者多開一個是假獨立性,執行者少開一個是白燒主 session 的 context</li>
-          <li><strong>檢查者</strong> —— <strong>acceptance-verifier</strong>(做對了沒)、<strong>plan-verifier</strong>(動工前只讀規格的冷讀)。同模型分身共享同一套誤讀,所以<strong>只跑一個</strong>,不為了多視角疊第二個;獨立性來自 fresh context 與唯讀的凍結輸入,回報不得寫成跨模型獨立驗收。工具收斂成白名單並停用委派</li>
+          <li><strong>檢查者</strong> —— <strong>acceptance-verifier</strong>(做對了沒)、<strong>plan-verifier</strong>(動工前只讀規格的冷讀)。同模型分身共享同一套誤讀,所以<strong>只跑一個</strong>,不為了多視角疊第二個;獨立性來自 fresh context 與唯讀的凍結輸入,回報不得寫成跨模型獨立驗收。工具收斂成白名單並停用委派;驗收者跑測試需要 Bash,「唯讀」蓋不滿的缺口由掛在角色檔 frontmatter 的 PreToolUse hook 補上 —— 會改變 repo 狀態的 git 指令直接 DENY</li>
           <li><strong>執行者</strong> —— 只有一支 <strong>executor</strong>(機械改動與有界技術判斷都歸它),釘 sonnet。目的不是獨立性是省額度:跑在獨立 context,主 session 只收最後一則訊息。不收安全敏感工作 —— 契約是「照規格做完」,而安全最需要的正是「規格本身有沒有漏洞」的判斷</li>
           <li><strong>direct-first</strong> —— 預設主 session 自己做。只有使用者明說要委派、兩條以上真正獨立可平行、或搜尋會吃掉大量 context 才派;實測完整編排的 token 與延遲大多落在主 session,不在便宜的 child</li>
           <li><strong>探索者</strong> —— <strong>Explore</strong> 覆寫內建版,釘死 haiku:內建版會繼承主 session 模型,等於用最貴的配置做最不需要判斷的全庫搜尋</li>
@@ -399,9 +399,9 @@
         <div class="card-top"><span class="cnum">L6</span><h3>每個 repo 的產物</h3><span class="chip full">產物 · 可轉移</span></div>
         <p class="loc">→ github.com/RyanLeeYi/harness-for-builders</p>
         <ul>
-          <li><strong>L1</strong>(動工日):<code>CLAUDE.md</code> + <code>init.sh</code> + <code>feature_list.json</code> —— acceptance 凍結、evidence 閘門、feature 之間的 <code>prerequisites</code> 明確申報(沒申報就當「未申報」,不當成「沒有相依」)</li>
-          <li><strong>L2</strong>(第一次沒做完就收工):<code>session-handoff.md</code> + <code>ARCHITECTURE.md</code></li>
-          <li><strong>L3</strong>(由事故或高風險觸發:同型錯誤重複發生、bug 無法從既有 log 定位、邊界違規曾發生、或進入 strict 風險面):結構化日誌 + 邊界 guard + 驗收角色分離。<strong>feature 數量不再是升級理由</strong></li>
+          <li><strong>動工日必建</strong>:<code>CLAUDE.md</code> + <code>init.sh</code> + <code>feature_list.json</code> —— acceptance 凍結、evidence 閘門、feature 之間的 <code>prerequisites</code> 明確申報(沒申報就當「未申報」,不當成「沒有相依」)</li>
+          <li><strong>第一次沒做完就收工</strong>:<code>session-handoff.md</code> + <code>ARCHITECTURE.md</code>;連續數個 session 沒被讀就停用</li>
+          <li><strong>由事故或高風險觸發</strong>(同型錯誤重複發生、bug 無法從既有 log 定位、邊界違規曾發生、或進入 strict 風險面):結構化日誌 + 邊界 guard + 驗收角色分離。<strong>feature 數量永遠不是理由</strong>。2026/08 起不再分 L1/L2/L3 級——數週實測升降級儀式無感,各產物只看自己的加入與移除條件</li>
           <li>跨 3 條以上 feature 的大工作,在規劃期就用 <strong>envelope</strong> 圈住共用約束與 non_goals 並簽核凍結;切出來的 slice 就是 feature,不另立第二套 ID。等 acceptance 都凍結了才發現要拆,只剩取代流程可走</li>
         </ul>
       </div>
