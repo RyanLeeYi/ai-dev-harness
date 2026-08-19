@@ -373,7 +373,7 @@
           <li>角色<strong>依用途分層</strong>,不是一條「少開 subagent」的通則 —— 分錯層的代價方向相反:檢查者多開一個是假獨立性,執行者少開一個是白燒主 session 的 context</li>
           <li><strong>檢查者</strong> —— <strong>acceptance-verifier</strong>(做對了沒)、<strong>plan-verifier</strong>(動工前只讀規格的冷讀)。同模型分身共享同一套誤讀,所以<strong>只跑一個</strong>,不為了多視角疊第二個;獨立性來自 fresh context 與唯讀的凍結輸入,回報不得寫成跨模型獨立驗收。工具收斂成白名單並停用委派;驗收者跑測試需要 Bash,「唯讀」蓋不滿的缺口由掛在角色檔 frontmatter 的 PreToolUse hook 補上 —— 會改變 repo 狀態的 git 指令直接 DENY</li>
           <li><strong>執行者</strong> —— 只有一支 <strong>executor</strong>(機械改動與有界技術判斷都歸它),釘 sonnet。目的不是獨立性是省額度:跑在獨立 context,主 session 只收最後一則訊息。不收安全敏感工作 —— 契約是「照規格做完」,而安全最需要的正是「規格本身有沒有漏洞」的判斷</li>
-          <li><strong>direct-first</strong> —— 預設主 session 自己做。只有使用者明說要委派、兩條以上真正獨立可平行、或搜尋會吃掉大量 context 才派;實測完整編排的 token 與延遲大多落在主 session,不在便宜的 child</li>
+          <li><strong>direct-first</strong> —— 預設主 session 自己做。要不要派一律過 baton 的 dispatch brake 五問(Outcome／Direct-work／Independence／Ownership／Closure),任一答不出就不派,本地不維護第二份規則;實測完整編排的 token 與延遲大多落在主 session,不在便宜的 child</li>
           <li><strong>探索者</strong> —— <strong>Explore</strong> 覆寫內建版,釘死 haiku:內建版會繼承主 session 模型,等於用最貴的配置做最不需要判斷的全庫搜尋</li>
           <li>另用內建 <strong>Plan</strong>(架構設計)</li>
           <li>原則:<strong>生成者 ≠ 驗收者</strong> —— 同脈絡的模型無法誠實評自己的產物;角色邊界靠 frontmatter 釘死,不靠規則叮嚀。<strong>省的是模型階層與 context 隔離,不是 effort</strong> —— 實測 97% 成本是長 session 重送 context、reasoning 只占 0.1%</li>

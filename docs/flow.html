@@ -336,11 +336,13 @@
   <h2>派不派 <span>／ 預設是不派</span></h2>
   <div class="tbl">
     <table>
-      <thead><tr><th>條件</th><th>成立才委派（三者任一）</th></tr></thead>
+      <thead><tr><th>baton 五問</th><th>任一答不出就不派（2026/08/19 起委派判斷外包給 baton dispatch brake）</th></tr></thead>
       <tbody>
-        <tr><td>明說</td><td>使用者說了「委派／交給 executor／派給 subagent」</td></tr>
-        <tr><td>真平行</td><td>兩條以上真正獨立、檔案不重疊，而且主線還有事可做</td></tr>
-        <tr><td>省 context</td><td>搜尋或批次工作會吃掉大量 context，且輸入與停止條件完整</td></tr>
+        <tr><td>Outcome</td><td>交付物與可觀察的完成條件講得出來（＝frozen acceptance）</td></tr>
+        <tr><td>Direct-work</td><td>主 session 自己做會不會更快更穩？會就不派</td></tr>
+        <tr><td>Independence</td><td>各條不重讀同一批來源、不互等（＝<code>harness-plan --dsm</code> 同一執行波次）</td></tr>
+        <tr><td>Ownership</td><td>每個檔案一個主人（＝派工單 ownership map，來源 <code>touches</code>）</td></tr>
+        <tr><td>Closure</td><td>誰整合、誰解矛盾、誰跑最終驗證</td></tr>
       </tbody>
     </table>
   </div>
